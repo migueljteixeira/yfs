@@ -1,4 +1,5 @@
-rpc/thr_pool.o: rpc/thr_pool.cc /usr/include/stdc-predef.h rpc/slock.h \
+rpc/thr_pool.o: rpc/thr_pool.cc /usr/include/stdc-predef.h \
+ /usr/include/i386-linux-gnu/bits/predefs.h rpc/slock.h \
  /usr/include/pthread.h /usr/include/features.h \
  /usr/include/i386-linux-gnu/sys/cdefs.h \
  /usr/include/i386-linux-gnu/bits/wordsize.h \

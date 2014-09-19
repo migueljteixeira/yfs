@@ -1,4 +1,5 @@
-rpc/rpctest: rpc/rpctest.cc /usr/include/stdc-predef.h rpc/rpc.h \
+rpc/rpctest: rpc/rpctest.cc /usr/include/stdc-predef.h \
+ /usr/include/i386-linux-gnu/bits/predefs.h rpc/rpc.h \
  /usr/include/i386-linux-gnu/sys/socket.h /usr/include/features.h \
  /usr/include/i386-linux-gnu/sys/cdefs.h \
  /usr/include/i386-linux-gnu/bits/wordsize.h \

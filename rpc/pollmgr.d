@@ -1,4 +1,5 @@
 rpc/pollmgr.o: rpc/pollmgr.cc /usr/include/stdc-predef.h \
+ /usr/include/i386-linux-gnu/bits/predefs.h \
  /usr/include/i386-linux-gnu/sys/time.h /usr/include/features.h \
  /usr/include/i386-linux-gnu/sys/cdefs.h \
  /usr/include/i386-linux-gnu/bits/wordsize.h \

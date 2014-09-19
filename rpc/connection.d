@@ -1,6 +1,6 @@
 rpc/connection.o: rpc/connection.cc /usr/include/stdc-predef.h \
- /usr/include/fcntl.h /usr/include/features.h \
- /usr/include/i386-linux-gnu/sys/cdefs.h \
+ /usr/include/i386-linux-gnu/bits/predefs.h /usr/include/fcntl.h \
+ /usr/include/features.h /usr/include/i386-linux-gnu/sys/cdefs.h \
  /usr/include/i386-linux-gnu/bits/wordsize.h \
  /usr/include/i386-linux-gnu/gnu/stubs.h \
  /usr/include/i386-linux-gnu/gnu/stubs-32.h \
