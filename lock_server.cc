@@ -11,7 +11,8 @@
 #include <algorithm>
 
 lock_server::lock_server():nacquire (0) {
-	pthread_mutex_init(&globalMutex, NULL);
+	pthread_mutex_init(&global_mutex, NULL);
+	pthread_cond_init (&wait_condition, NULL);
 }
 
 lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, int &r) {
@@ -34,18 +35,25 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 	// TODO: change thread pool
 	pthread_create(&threads[lid], NULL, &lock_server::acquireHandler, readParams);
 
+	// suspend thread until it terminates
+	pthread_join(threads[lid], NULL);
+
 	return lock_protocol::OK;
 }
 
-
-
-
 lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid, int &r) {
-	pthread_mutex_t *clientMutex = locks.find(lid)->second->mutex;
+	lock_server::lockid_info *lock_info = locks.find(lid)->second;
 
-	// unlock clientID
-	assert( pthread_mutex_unlock (clientMutex) == 0);
-	printf("unlocked! %llu\n", lid);
+	assert( pthread_mutex_lock (lock_info->mutex) == 0 );
+	lock_info->status = lockid_info::FREE;
+
+	assert( pthread_mutex_unlock (lock_info->mutex) == 0 );
+	printf("thread RELEASED\n");
+
+	// unblock threads blocked on the condition variable
+	assert( pthread_cond_signal(&wait_condition) == 0 );
+	
+	printf("signal sent! %llu\n", lid);
 	
 	return lock_protocol::OK;
 }

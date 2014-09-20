@@ -1,7 +1,6 @@
-lock_demo.o: lock_demo.cc /usr/include/stdc-predef.h \
- /usr/include/i386-linux-gnu/bits/predefs.h lock_protocol.h rpc/rpc.h \
- /usr/include/i386-linux-gnu/sys/socket.h /usr/include/features.h \
- /usr/include/i386-linux-gnu/sys/cdefs.h \
+lock_demo.o: lock_demo.cc /usr/include/stdc-predef.h lock_protocol.h \
+ rpc/rpc.h /usr/include/i386-linux-gnu/sys/socket.h \
+ /usr/include/features.h /usr/include/i386-linux-gnu/sys/cdefs.h \
  /usr/include/i386-linux-gnu/bits/wordsize.h \
  /usr/include/i386-linux-gnu/gnu/stubs.h \
  /usr/include/i386-linux-gnu/gnu/stubs-32.h \

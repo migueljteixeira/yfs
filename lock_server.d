@@ -1,5 +1,4 @@
-lock_server.o: lock_server.cc /usr/include/stdc-predef.h \
- /usr/include/i386-linux-gnu/bits/predefs.h lock_server.h \
+lock_server.o: lock_server.cc /usr/include/stdc-predef.h lock_server.h \
  /usr/include/c++/4.8/string \
  /usr/include/i386-linux-gnu/c++/4.8/bits/c++config.h \
  /usr/include/i386-linux-gnu/c++/4.8/bits/os_defines.h \

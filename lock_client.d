@@ -1,5 +1,4 @@
-lock_client.o: lock_client.cc /usr/include/stdc-predef.h \
- /usr/include/i386-linux-gnu/bits/predefs.h lock_client.h \
+lock_client.o: lock_client.cc /usr/include/stdc-predef.h lock_client.h \
  /usr/include/c++/4.8/string \
  /usr/include/i386-linux-gnu/c++/4.8/bits/c++config.h \
  /usr/include/i386-linux-gnu/c++/4.8/bits/os_defines.h \

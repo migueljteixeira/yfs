@@ -22,5 +22,4 @@ class lock_client {
 		virtual lock_protocol::status stat(lock_protocol::lockid_t);
 };
 
-
 #endif 
