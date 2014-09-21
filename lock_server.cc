@@ -45,10 +45,12 @@ lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid,
 
 	lock_server::lockid_info *lock_info = locks.find(lid)->second;
 
-	lock_info->status = lockid_info::FREE;
-	assert( pthread_mutex_unlock (lock_info->mutex) == 0 );
+	assert( pthread_mutex_lock (lock_info->mutex) == 0 );
 
+	lock_info->status = lockid_info::FREE;
 	printf("%d released %llu\n", clt, lid);
+
+	assert( pthread_mutex_unlock (lock_info->mutex) == 0 );
 
 	// unblock threads blocked on the condition variable
 	assert( pthread_cond_signal(lock_info->wait) == 0 );
