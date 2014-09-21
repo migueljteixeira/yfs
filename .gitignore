@@ -5,6 +5,7 @@
 *.dll
 *.exe
 *.so
+*.o
 *.a
 *.d
 lock_demo
