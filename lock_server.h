@@ -10,7 +10,6 @@
 #include "rpc.h"
 #include <vector>
 #include <stdio.h>
-#define NUM_THREADS 10
 
 class lock_server {
 
@@ -18,23 +17,22 @@ class lock_server {
 		int nacquire;
 		lock_protocol::lockid_t clientID;
 		
-		pthread_t threads[NUM_THREADS];
+		std::map<int, pthread_t*> threads;
 		pthread_mutex_t global_mutex;
-		pthread_cond_t wait_condition;
 
 		struct lockid_info {
-			enum lock_status { LOCKED, FREE };
-			lock_status status;
+			enum lock_status { LOCKED, FREE } status;
 			pthread_mutex_t *mutex;
+			pthread_cond_t *wait;
 		};
 
 		std::map<lock_protocol::lockid_t, lock_server::lockid_info*> locks;
 
 		struct thread_params {
-				int clt;
-				lock_protocol::lockid_t lid;
-				lock_server *context;
-			};
+			int clt;
+			lock_protocol::lockid_t lid;
+			lock_server *context;
+		};
 
 	public:
 		lock_server();
@@ -51,9 +49,8 @@ class lock_server {
 			std::map<lock_protocol::lockid_t, lock_server::lockid_info*> *locks = &(params->context->locks);
 
 			// lockid does not exist, we have to create a new one
+			pthread_mutex_lock( &(params->context->global_mutex) );
 			if( locks->find(*lid) == locks->end() ) {
-				pthread_mutex_lock( &(params->context->global_mutex) );
-
 				// create new lockid entry
 				lock_server::lockid_info *new_lockid = (lock_server::lockid_info *)malloc(sizeof(*new_lockid));
 				new_lockid->status = lockid_info::FREE;
@@ -62,27 +59,31 @@ class lock_server {
 				pthread_mutex_init(mutex, NULL);
 				new_lockid->mutex = mutex;
 
+				pthread_cond_t *wait = (pthread_cond_t *)malloc(sizeof(*wait));
+				pthread_cond_init(wait, NULL);
+				new_lockid->wait = wait;
+
 				// insert entry into map
 				locks->insert( std::pair<lock_protocol::lockid_t, lock_server::lockid_info *>(*lid, new_lockid) );
-
-				pthread_mutex_unlock( &(params->context->global_mutex) );
 			}
+			pthread_mutex_unlock( &(params->context->global_mutex) );
 
-			assert( pthread_mutex_lock (locks->find(*lid)->second->mutex) == 0 );
+			lock_server::lockid_info *lockid_info_ptr = locks->find(*lid)->second;
+			assert( pthread_mutex_lock (lockid_info_ptr->mutex) == 0 );
 
 			// while lockid is locked, wait for it to be unlocked
-			while( locks->find(*lid)->second->status == lockid_info::LOCKED ) {
-				printf("thread blocked! %llu\n", *lid);
+			while( lockid_info_ptr->status == lockid_info::LOCKED ) {
+				printf("%d blocked for lid %llu\n", params->clt, *lid);
 
 				// block current thread
-				assert( pthread_cond_wait( &(params->context->wait_condition), locks->find(*lid)->second->mutex) == 0 );
+				assert( pthread_cond_wait(lockid_info_ptr->wait, lockid_info_ptr->mutex) == 0 );
 			}
-			printf("thread may proceed! %llu\n", *lid);
 
-			locks->find(*lid)->second->status = lockid_info::LOCKED;
+			printf("%d can proceed for lid %llu\n", params->clt, *lid);
+			lockid_info_ptr->status = lockid_info::LOCKED;
+			printf("lid %llu locked\n", *lid);
 
-			assert( pthread_mutex_unlock (locks->find(*lid)->second->mutex) == 0 );
-			printf("thread LOCKED\n");
+			assert( pthread_mutex_unlock (lockid_info_ptr->mutex) == 0 );
 
 			// clears memory
 			free(context);
