@@ -563,6 +563,25 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 		char *b, int sz)
 {
 	ScopedLock rwl(&reply_window_m_);
+
+	std::list<reply_t> list = reply_window_.at(clt_nonce);
+
+	// list iterator
+	std::list<reply_t>::iterator it = list.begin();
+
+	// linear search for the client request
+	while(it != list.end() && (*it).xid != xid)
+		it++;
+
+	// if request is not found
+	if(it == list.end()) {
+		fprintf(stderr, "cannot find client request %d\n", xid);
+		return;
+	}
+
+	// add reply
+	(*it).buf = b;
+	(*it).sz = sz;
 }
 
 void
@@ -587,7 +606,30 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
 
-	return NEW;
+	// obtains client list
+	std::list<reply_t> clt_list = reply_window_.at(clt_nonce);
+
+	// list iterator
+	std::list<reply_t>::iterator it = clt_list.begin();
+
+	// linear search for the client reply
+	while(it != clt_list.end() && (*it).xid != xid)
+		it++;
+
+	// if reply is not found, we need a new reply
+	if(it == clt_list.end()) {
+		reply_t *reply = new reply_t(xid);
+		clt_list.push_back(reply);
+		return NEW;
+	}
+
+	// window resize
+	//if(xid_rep > 
+
+	// duplicate
+	*b = (*it).buf;
+	sz = (*it).sz;
+	return DONE;
 }
 
 //rpc handler
