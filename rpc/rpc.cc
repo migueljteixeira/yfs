@@ -582,6 +582,7 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 	// add reply
 	(*it).buf = b;
 	(*it).sz = sz;
+	(*it).cb_present = true; // indicates that the reply has been sent
 }
 
 void
@@ -612,24 +613,38 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 	// list iterator
 	std::list<reply_t>::iterator it = clt_list.begin();
 
-	// linear search for the client reply
-	while(it != clt_list.end() && (*it).xid != xid)
-		it++;
+	while(it != clt_list.end()) {
+		
+		// resize window
+		if( (*it).xid < xid_rep ) {
+			// removes element from map
+			it = reply_window_.at(clt_nonce).erase(it);
+		}
+		
+		else {
+			if( (*it).xid == xid ) {
 
-	// if reply is not found, we need a new reply
-	if(it == clt_list.end()) {
-		reply_t *reply = new reply_t(xid);
-		clt_list.push_back(reply);
-		return NEW;
+				// the reply has been sent ?????
+				if( (*it).cb_present ){
+
+					*b = (*it).buf;
+					*sz = (*it).sz;
+					return DONE;
+				}
+				else {
+					return INPROGRESS;
+				}
+			}
+
+			it++;
+		}
 	}
 
-	// window resize
-	//if(xid_rep > 
-
-	// duplicate
-	*b = (*it).buf;
-	sz = (*it).sz;
-	return DONE;
+	// if reply is not found, we need a new reply
+	reply_t *reply = new reply_t(xid);
+	clt_list.push_back(*reply);
+	
+	return NEW;
 }
 
 //rpc handler
