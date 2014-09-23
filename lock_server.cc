@@ -25,17 +25,42 @@ lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, in
 lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r) {
 	printf("%d acquire %llu\n", clt, lid);
 
-	struct lock_server::thread_params *readParams = (struct lock_server::thread_params *)malloc(sizeof(*readParams));
-	readParams->clt = clt;
-	readParams->lid = lid;
-	readParams->context = this;
+	// lockid does not exist, we have to create a new one
+	pthread_mutex_lock( &global_mutex );
+	if( locks.find(lid) == locks.end() ) {
+		// create new lockid entry
+		lock_server::lockid_info *new_lockid = (lock_server::lockid_info *)malloc(sizeof(*new_lockid));
+		new_lockid->status = lockid_info::FREE;
 
-	// thread to handle client
-	// TODO: change thread pool
-	pthread_t th_ptr;
-	pthread_create(&th_ptr, NULL, &lock_server::acquireHandler, readParams);
+		pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
+		pthread_mutex_init(mutex, NULL);
+		new_lockid->mutex = mutex;
 
-	pthread_join(th_ptr, NULL);
+		pthread_cond_t *wait = (pthread_cond_t *)malloc(sizeof(*wait));
+		pthread_cond_init(wait, NULL);
+		new_lockid->wait = wait;
+
+		// insert entry into map
+		locks.insert( std::pair<lock_protocol::lockid_t, lock_server::lockid_info *>(lid, new_lockid) );
+	}
+	pthread_mutex_unlock( &global_mutex );
+
+	lock_server::lockid_info *lockid_info_ptr = locks.find(lid)->second;
+	assert( pthread_mutex_lock (lockid_info_ptr->mutex) == 0 );
+
+	// while lockid is locked, wait for it to be unlocked
+	while( lockid_info_ptr->status == lockid_info::LOCKED ) {
+		printf("%d blocked for lid %llu\n", clt, lid);
+
+		// block current thread
+		assert( pthread_cond_wait(lockid_info_ptr->wait, lockid_info_ptr->mutex) == 0 );
+	}
+
+	printf("%d can proceed for lid %llu\n", clt, lid);
+	lockid_info_ptr->status = lockid_info::LOCKED;
+	printf("lid %llu locked\n", lid);
+
+	assert( pthread_mutex_unlock (lockid_info_ptr->mutex) == 0 );
 
 	return lock_protocol::OK;
 }
