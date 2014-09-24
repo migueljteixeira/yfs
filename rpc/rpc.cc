@@ -660,8 +660,7 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 	it = clt_list->begin();
 	while(it != clt_list->end() && (*it).xid <= xid_rep && clt_list->size() > window_size) {
 		free((*it).buf);
-		clt_list->pop_front();
-		it++;
+		clt_list->erase(it);
 	}
 
 	// if reply is not found, we need a new reply
