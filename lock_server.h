@@ -16,7 +16,6 @@ class lock_server {
 	protected:
 		int nacquire;
 		lock_protocol::lockid_t clientID;
-		
 		pthread_mutex_t global_mutex;
 
 		struct lockid_info {

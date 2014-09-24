@@ -16,14 +16,12 @@ lock_server::lock_server():nacquire (0) {
 
 lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, int &r) {
 	lock_protocol::status ret = lock_protocol::OK;
-	printf("stat request from clt %d\n", clt);
 	r = nacquire;
 	
 	return ret;
 }
 
 lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r) {
-	printf("%d acquire %llu\n", clt, lid);
 
 	// lockid does not exist, we have to create a new one
 	pthread_mutex_lock( &global_mutex );
@@ -50,15 +48,12 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 
 	// while lockid is locked, wait for it to be unlocked
 	while( lockid_info_ptr->status == lockid_info::LOCKED ) {
-		printf("%d blocked for lid %llu\n", clt, lid);
 
 		// block current thread
 		assert( pthread_cond_wait(lockid_info_ptr->wait, lockid_info_ptr->mutex) == 0 );
 	}
 
-	printf("%d can proceed for lid %llu\n", clt, lid);
 	lockid_info_ptr->status = lockid_info::LOCKED;
-	printf("lid %llu locked\n", lid);
 
 	assert( pthread_mutex_unlock (lockid_info_ptr->mutex) == 0 );
 
@@ -66,21 +61,16 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 }
 
 lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid, int &r) {
-	printf("%d release %llu\n", clt, lid);
-
 	lock_server::lockid_info *lock_info = locks.find(lid)->second;
 
 	assert( pthread_mutex_lock (lock_info->mutex) == 0 );
 
 	lock_info->status = lockid_info::FREE;
-	printf("%d released %llu\n", clt, lid);
 
 	assert( pthread_mutex_unlock (lock_info->mutex) == 0 );
 
 	// unblock threads blocked on the condition variable
 	assert( pthread_cond_signal(lock_info->wait) == 0 );
-	
-	printf("signal sent! %llu\n", lid);
 	
 	return lock_protocol::OK;
 }
