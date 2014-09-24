@@ -568,21 +568,18 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 
 	// list iterator
 	std::list<reply_t>::iterator it = list.begin();
+	while(it != list.end()) {
+         
+		if( (*it).xid == xid ) {
+             (*it).buf = b;
+             (*it).sz = sz;
+             (*it).cb_present = true; // indicates that the reply has been sent
+             break;
+         }
 
-	// linear search for the client request
-	while(it != list.end() && (*it).xid != xid)
 		it++;
+     }
 
-	// if request is not found
-	if(it == list.end()) {
-		fprintf(stderr, "cannot find client request %d\n", xid);
-		return;
-	}
-
-	// add reply
-	(*it).buf = b;
-	(*it).sz = sz;
-	(*it).cb_present = true; // indicates that the reply has been sent
 }
 
 void
@@ -612,40 +609,41 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 
 	// list iterator
 	std::list<reply_t>::iterator it = clt_list.begin();
-
 	while(it != clt_list.end()) {
 		
 		// resize window
 		if( (*it).xid < xid_rep ) {
-			// removes element from map
+			// we don't need it anymore
 			it = reply_window_.at(clt_nonce).erase(it);
+
+			continue; // we don't want to increment 'it'
 		}
 		
-		else {
-			if( (*it).xid == xid ) {
+		else if( (*it).xid == xid ) {
 
-				// the reply has been sent ?????
-				if( (*it).cb_present ){
+			// the reply has been sent ?
+			if( (*it).cb_present ){
 
-					*b = (*it).buf;
-					*sz = (*it).sz;
-					return DONE;
-				}
-				else
-					return INPROGRESS;
+				*b = (*it).buf;
+				*sz = (*it).sz;
+				return DONE;
 			}
-			else if ( (*it).xid > xid ) {
-				return FORGOTTEN;
-			}
-
-			it++;
+			else
+				return INPROGRESS;
 		}
+		
+		// the xid might have been deleted
+		else if ( (*it).xid > xid ) {
+			return FORGOTTEN;
+		}
+
+		it++;
 	}
 
 	// if reply is not found, we need a new reply
 	reply_t *reply = new reply_t(xid);
 	clt_list.push_back(*reply);
-	
+
 	return NEW;
 }
 
