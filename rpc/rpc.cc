@@ -572,14 +572,14 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 	while(it != clt_list->end()) {
 
 		if( (*it).xid == xid ) {
-             		(*it).buf = b;
-             		(*it).sz = sz;
-             		(*it).cb_present = true; // indicates that the reply has been sent
-             		break;
-         	}
+			(*it).buf = b;
+			(*it).sz = sz;
+			(*it).cb_present = true; // indicates that the reply has been sent
+			break;
+     	}
 
 		it++;
-     	}
+ 	}
 
 }
 
@@ -609,49 +609,43 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 	std::list<reply_t> *clt_list = &reply_window_[clt_nonce];
 
 	// if list is empty
-	printf("%d\n", clt_list->size());
 	if(clt_list->size() == 0) {
 		reply_t r(xid);
-            	clt_list->push_back(r);
-		printf("------------------------------------NEW EMPTY\n");
-            	return NEW;
+    	clt_list->push_back(r);
+
+		return NEW;
 	}
 
 	// list iterator
 	std::list<reply_t>::iterator it = clt_list->begin();
-
-	// find smallest xid in window
-	unsigned int smallest_xid = clt_list->front().xid;
-	while(it != clt_list->end()) {
-		if((*it).xid < smallest_xid) smallest_xid = (*it).xid;
-		it++;
-	}
-
-	it = clt_list->begin();
 	while(it != clt_list->end()) {
 		
 		if( (*it).xid == xid ) {
 
 			// the reply has been sent ?
 			if( (*it).cb_present ){
-
 				*b = (*it).buf;
 				*sz = (*it).sz;
-				printf("------------------------------------DONE\n");
+
 				return DONE;
 			}
-			else {
-				printf("------------------------------------INPROGRESS\n");
+			else
 				return INPROGRESS;
-			}
 		}
 
 		it++;
 	}
 
+	// find smallest xid in window
+	it = clt_list->begin();
+	unsigned int smallest_xid = clt_list->front().xid;
+	while(it != clt_list->end()) {
+		if((*it).xid < smallest_xid) smallest_xid = (*it).xid;
+		it++;
+	}
+
 	// the xid might have been deleted
 	if ( smallest_xid > xid ) {
-		printf("------------------------------------FORGOTTEN\n");
 		return FORGOTTEN;
 	}
 
@@ -663,10 +657,9 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 		clt_list->erase(it++);
 	}
 
-	// if reply is not found, we need a new reply
+	// if reply not found, we need a new reply
 	reply_t *reply = new reply_t(xid);
 	clt_list->push_back(*reply);
-	printf("------------------------------------NEW\n");
 	return NEW;
 }
 
