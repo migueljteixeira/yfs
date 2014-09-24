@@ -564,21 +564,22 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
 
-	std::list<reply_t> list = reply_window_.at(clt_nonce);
+	// obtains client list
+	std::list<reply_t> *clt_list = &reply_window_[clt_nonce];
 
 	// list iterator
-	std::list<reply_t>::iterator it = list.begin();
-	while(it != list.end()) {
-         
+	std::list<reply_t>::iterator it = clt_list->begin();
+	while(it != clt_list->end()) {
+
 		if( (*it).xid == xid ) {
-             (*it).buf = b;
-             (*it).sz = sz;
-             (*it).cb_present = true; // indicates that the reply has been sent
-             break;
-         }
+             		(*it).buf = b;
+             		(*it).sz = sz;
+             		(*it).cb_present = true; // indicates that the reply has been sent
+             		break;
+         	}
 
 		it++;
-     }
+     	}
 
 }
 
@@ -605,45 +606,68 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 	ScopedLock rwl(&reply_window_m_);
 
 	// obtains client list
-	std::list<reply_t> clt_list = reply_window_.at(clt_nonce);
+	std::list<reply_t> *clt_list = &reply_window_[clt_nonce];
+
+	// if list is empty
+	printf("%d\n", clt_list->size());
+	if(clt_list->size() == 0) {
+		reply_t r(xid);
+            	clt_list->push_back(r);
+		printf("------------------------------------NEW EMPTY\n");
+            	return NEW;
+	}
 
 	// list iterator
-	std::list<reply_t>::iterator it = clt_list.begin();
-	while(it != clt_list.end()) {
-		
-		// resize window
-		if( (*it).xid < xid_rep ) {
-			// we don't need it anymore
-			it = reply_window_.at(clt_nonce).erase(it);
+	std::list<reply_t>::iterator it = clt_list->begin();
 
-			continue; // we don't want to increment 'it'
-		}
+	// find smallest xid in window
+	unsigned int smallest_xid = clt_list->front().xid;
+	while(it != clt_list->end()) {
+		if((*it).xid < smallest_xid) smallest_xid = (*it).xid;
+		it++;
+	}
+
+	it = clt_list->begin();
+	while(it != clt_list->end()) {
 		
-		else if( (*it).xid == xid ) {
+		if( (*it).xid == xid ) {
 
 			// the reply has been sent ?
 			if( (*it).cb_present ){
 
 				*b = (*it).buf;
 				*sz = (*it).sz;
+				printf("------------------------------------DONE\n");
 				return DONE;
 			}
-			else
+			else {
+				printf("------------------------------------INPROGRESS\n");
 				return INPROGRESS;
-		}
-		
-		// the xid might have been deleted
-		else if ( (*it).xid > xid ) {
-			return FORGOTTEN;
+			}
 		}
 
 		it++;
 	}
 
+	// the xid might have been deleted
+	if ( smallest_xid > xid ) {
+		printf("------------------------------------FORGOTTEN\n");
+		return FORGOTTEN;
+	}
+
+	// resize window
+	unsigned int window_size = 10;
+	it = clt_list->begin();
+	while(it != clt_list->end() && (*it).xid <= xid_rep && clt_list->size() > window_size) {
+		free((*it).buf);
+		clt_list->pop_front();
+		it++;
+	}
+
 	// if reply is not found, we need a new reply
 	reply_t *reply = new reply_t(xid);
-	clt_list.push_back(*reply);
-
+	clt_list->push_back(*reply);
+	printf("------------------------------------NEW\n");
 	return NEW;
 }
 
