@@ -631,9 +631,11 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 					*sz = (*it).sz;
 					return DONE;
 				}
-				else {
+				else
 					return INPROGRESS;
-				}
+			}
+			else if ( (*it).xid > xid ) {
+				return FORGOTTEN;
 			}
 
 			it++;
