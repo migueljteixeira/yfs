@@ -92,6 +92,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
 }
 
 int
+
 yfs_client::getlisting(inum inum, std::vector<dirent> & entries)
 {
 	// get dir content
@@ -122,3 +123,28 @@ yfs_client::getlisting(inum inum, std::vector<dirent> & entries)
 	return OK;
 }
 
+int
+yfs_client::createfile(inum parent, inum inum, std::string file_name)
+{
+  printf("createfile %016llx in parent %016llx\n", inum, parent);
+
+	// check if parent exists
+	std::string dir;
+	if(ec->get(parent, dir) != extent_protocol::OK)
+		return NOENT;
+
+	// create file
+  if(ec->put(inum, "") != extent_protocol::OK)
+		return IOERR;
+
+	// update parent content
+	if(!dir.empty())
+		dir.append(";");
+	dir.append(filename(inum) + ":" + file_name);
+
+	// update parent
+	if(ec->put(parent, dir) != extent_protocol::OK)
+		return IOERR;
+
+  return OK;
+}

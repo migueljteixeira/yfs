@@ -46,6 +46,7 @@
   int getdir(inum, dirinfo &);
 
 	int getlisting(inum, std::vector<dirent> &);
+  int createfile(inum, inum, std::string)
 };
 
 #endif 
