@@ -93,7 +93,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
 
 int
 
-yfs_client::getlisting(inum inum, std::vector<dirent> & entries)
+yfs_client::getDirectoryContent(inum inum, std::vector<dirent> & entries)
 {
 	// get dir content
     /*std::string buf;

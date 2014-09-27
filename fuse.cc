@@ -246,15 +246,14 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
     std::vector<yfs_client::dirent> entries;
 
 	// get listing for the dir
-	yfs->getlisting(inum, entries);
+	yfs->getDirectoryContent(inum, entries);
 
 	// add information about the files to the buffer
-    for (std::vector<yfs_client::dirent>::const_iterator it =
-         entries.begin(); it != entries.end(); it++) {
+	for (std::vector<yfs_client::dirent>::const_iterator it =
+		entries.begin(); it != entries.end(); it++) {
 
 		dirbuf_add(&b, it->name.c_str(), static_cast<fuse_ino_t>(it->inum));
-    }
-
+	}
 
 	reply_buf_limited(req, b.p, b.size, off, size);
 	free(b.p);
