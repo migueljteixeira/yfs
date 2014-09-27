@@ -91,5 +91,34 @@ yfs_client::getdir(inum inum, dirinfo &din)
   return r;
 }
 
+int
+yfs_client::getlisting(inum inum, std::vector<dirent> & entries)
+{
+	// get dir content
+    /*std::string buf;
+    if (ec->get(inum, buf) != extent_protocol::OK)
+        return IOERR;*/
 
+	std::istringstream is("filenam1:inum1:filename2:inum2:filename3:inum3"); 
+	std::string line;
+
+	while (getline(is, line)) {
+
+		// we reach the end of the string
+		if(line.empty())
+			break;
+
+		printf("line: %s", line.c_str());
+
+		dirent e;
+		// get first file info( filename1:inum1:filename2:inum2:... )
+		e.name = line.substr(0, line.find(":"));
+		e.inum = n2i(line.substr(1, line.find(":")));
+
+		// add new entry
+        entries.push_back(e);
+	}
+
+	return OK;
+}
 

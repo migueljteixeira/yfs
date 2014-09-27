@@ -28,37 +28,37 @@ int id() {
 yfs_client::status
 getattr(yfs_client::inum inum, struct stat &st)
 {
-  yfs_client::status ret;
+	yfs_client::status ret;
 
-  bzero(&st, sizeof(st));
+	bzero(&st, sizeof(st));
 
-  st.st_ino = inum;
-  printf("getattr %016llx %d\n", inum, yfs->isfile(inum));
-  if(yfs->isfile(inum)){
-     yfs_client::fileinfo info;
-     ret = yfs->getfile(inum, info);
-     if(ret != yfs_client::OK)
-       return ret;
-     st.st_mode = S_IFREG | 0666;
-     st.st_nlink = 1;
-     st.st_atime = info.atime;
-     st.st_mtime = info.mtime;
-     st.st_ctime = info.ctime;
-     st.st_size = info.size;
-     printf("   getattr -> %llu\n", info.size);
-   } else {
-     yfs_client::dirinfo info;
-     ret = yfs->getdir(inum, info);
-     if(ret != yfs_client::OK)
-       return ret;
-     st.st_mode = S_IFDIR | 0777;
-     st.st_nlink = 2;
-     st.st_atime = info.atime;
-     st.st_mtime = info.mtime;
-     st.st_ctime = info.ctime;
-     printf("   getattr -> %lu %lu %lu\n", info.atime, info.mtime, info.ctime);
-   }
-   return yfs_client::OK;
+	st.st_ino = inum;
+	printf("getattr %016llx %d\n", inum, yfs->isfile(inum));
+	if(yfs->isfile(inum)){
+		yfs_client::fileinfo info;
+		ret = yfs->getfile(inum, info);
+		if(ret != yfs_client::OK)
+			return ret;
+		st.st_mode = S_IFREG | 0666;
+		st.st_nlink = 1;
+		st.st_atime = info.atime;
+		st.st_mtime = info.mtime;
+		st.st_ctime = info.ctime;
+		st.st_size = info.size;
+		printf("   getattr -> %llu\n", info.size);
+	} else {
+		yfs_client::dirinfo info;
+		ret = yfs->getdir(inum, info);
+		if(ret != yfs_client::OK)
+			return ret;
+		st.st_mode = S_IFDIR | 0777;
+		st.st_nlink = 2;
+		st.st_atime = info.atime;
+		st.st_mtime = info.mtime;
+		st.st_ctime = info.ctime;
+		printf("   getattr -> %lu %lu %lu\n", info.atime, info.mtime, info.ctime);
+	}
+	return yfs_client::OK;
 }
 
 
@@ -203,25 +203,34 @@ void
 fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
           off_t off, struct fuse_file_info *fi)
 {
-  yfs_client::inum inum = ino; // req->in.h.nodeid;
-  struct dirbuf b;
-  yfs_client::dirent e;
+	yfs_client::inum inum = ino; // req->in.h.nodeid;
+	struct dirbuf b;
+	yfs_client::dirent e;
 
-  printf("fuseserver_readdir\n");
+	printf("fuseserver_readdir\n");
 
- if(!yfs->isdir(inum)){
-    fuse_reply_err(req, ENOTDIR);
-    return;
-  }
+	if(!yfs->isdir(inum)){
+		fuse_reply_err(req, ENOTDIR);
+		return;
+	}
 
-  memset(&b, 0, sizeof(b));
+	memset(&b, 0, sizeof(b));
+
+    std::vector<yfs_client::dirent> entries;
+
+	// get listing for the dir
+	yfs->getlisting(inum, entries);
+
+	// add information about the files to the buffer
+    for (std::vector<yfs_client::dirent>::const_iterator it =
+         entries.begin(); it != entries.end(); it++) {
+
+		dirbuf_add(&b, it->name.c_str(), static_cast<fuse_ino_t>(it->inum));
+    }
 
 
-   // fill in the b data structure using dirbuf_add
-
-
-   reply_buf_limited(req, b.p, b.size, off, size);
-   free(b.p);
+	reply_buf_limited(req, b.p, b.size, off, size);
+	free(b.p);
  }
 
 

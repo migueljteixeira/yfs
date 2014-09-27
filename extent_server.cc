@@ -25,8 +25,8 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 
 	// store extent in extent_map
 	extent_map.insert( std::pair<extent_protocol::extentid_t, extent_server::extent_t*>(id, ex) );
-	
-  return extent_protocol::OK;
+
+	return extent_protocol::OK;
 }
 
 int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
@@ -52,7 +52,7 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 	// get buf
 	buf = ex->buf;
 
-  return extent_protocol::OK;
+	return extent_protocol::OK;
 }
 
 int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr &a)
@@ -65,7 +65,7 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 	// get extent attributes
 	a = extent_map[id]->attr;  
 
-  return extent_protocol::OK;
+	return extent_protocol::OK;
 }
 
 int extent_server::remove(extent_protocol::extentid_t id, int &)
@@ -84,6 +84,6 @@ int extent_server::remove(extent_protocol::extentid_t id, int &)
 	// free memory
 	free(ex);
 
-  return extent_protocol::OK;
+	return extent_protocol::OK;
 }
 
