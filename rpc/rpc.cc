@@ -69,7 +69,6 @@
 #include <netinet/tcp.h>
 #include <time.h>
 #include <netdb.h>
-#include <unistd.h>
 
 #include "jsl_log.h"
 #include "gettime.h"
@@ -563,24 +562,6 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 		char *b, int sz)
 {
 	ScopedLock rwl(&reply_window_m_);
-
-	// obtains client list
-	std::list<reply_t> *clt_list = &reply_window_[clt_nonce];
-
-	// list iterator
-	std::list<reply_t>::iterator it = clt_list->begin();
-	while(it != clt_list->end()) {
-
-		if( (*it).xid == xid ) {
-			(*it).buf = b;
-			(*it).sz = sz;
-			(*it).cb_present = true; // indicates that the reply has been sent
-			break;
-     	}
-
-		it++;
- 	}
-
 }
 
 void
@@ -605,61 +586,6 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
 
-	// obtains client list
-	std::list<reply_t> *clt_list = &reply_window_[clt_nonce];
-
-	// if list is empty
-	if(clt_list->size() == 0) {
-		reply_t r(xid);
-    	clt_list->push_back(r);
-
-		return NEW;
-	}
-
-	// list iterator
-	std::list<reply_t>::iterator it = clt_list->begin();
-	while(it != clt_list->end()) {
-		
-		if( (*it).xid == xid ) {
-
-			// the reply has been sent ?
-			if( (*it).cb_present ){
-				*b = (*it).buf;
-				*sz = (*it).sz;
-
-				return DONE;
-			}
-			else
-				return INPROGRESS;
-		}
-
-		it++;
-	}
-
-	// find smallest xid in window
-	it = clt_list->begin();
-	unsigned int smallest_xid = clt_list->front().xid;
-	while(it != clt_list->end()) {
-		if((*it).xid < smallest_xid) smallest_xid = (*it).xid;
-		it++;
-	}
-
-	// the xid might have been deleted
-	if ( smallest_xid > xid ) {
-		return FORGOTTEN;
-	}
-
-	// resize window
-	unsigned int window_size = 20;
-	it = clt_list->begin();
-	while(it != clt_list->end() && (*it).xid <= xid_rep && clt_list->size() > window_size) {
-		free((*it).buf);
-		clt_list->erase(it++);
-	}
-
-	// if reply not found, we need a new reply
-	reply_t *reply = new reply_t(xid);
-	clt_list->push_back(*reply);
 	return NEW;
 }
 

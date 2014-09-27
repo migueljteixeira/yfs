@@ -10,7 +10,6 @@
 #include <vector>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 
 // must be >= 2
 int nt = 10; //XXX: lab1's rpc handlers are blocking. Since rpcs uses a thread pool of 10 threads, we cannot test more than 10 blocking rpc.
