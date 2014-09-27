@@ -125,8 +125,35 @@ yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
      mode_t mode, struct fuse_entry_param *e)
 {
-  // You fill this in
-  return yfs_client::NOENT;
+	// generate file random inum
+	yfs_client::inum file_inum = random();
+
+	// because it's a file we have to put the 32th bit at 1
+	file_inum = file_inum | 0x80000000;
+
+	// try to create file
+	yfs_client::status ret = yfs->createfile(parent, file_inum, name);
+	if(ret != yfs_client::OK)
+		return ret;
+
+	// update fuse entry
+	yfs_client::fileinfo info;
+	ret = yfs->getfile(inum, info);
+	if(ret != yfs_client::OK)
+		return ret;
+
+	e->ino = file_inum;
+	e->generation = random();
+	e->attr.st_mode = S_IFREG | 0666;
+	e->attr.st_nlink = 1;
+	e->attr.st_atime = info.atime;
+	e->attr.st_mtime = info.mtime;
+	e->attr.st_ctime = info.ctime;
+	e->attr.st_size = info.size;
+	e->entry_timeout = 0.0;
+  e->attr_timeout = 0.0;
+
+  return yfs_client::OK;
 }
 
 void

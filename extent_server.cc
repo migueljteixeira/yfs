@@ -13,8 +13,13 @@ extent_server::extent_server() {}
 
 int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 {
-	// Allocate new extent
-	extent_t *ex = (extent_t*)malloc(sizeof(extent_t));
+	extent_t *ex;
+
+	// if extent exists we don't need to allocate new space
+	if(extent_map.find(id) == extent_map.end())
+		ex = (extent_t*)malloc(sizeof(extent_t));
+	else
+		ex = extent_map[id];
 
 	// initialize extent
 	ex->buf = buf;
@@ -24,7 +29,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 	ex->attr.size = buf.length();
 
 	// store extent in extent_map
-	extent_map.insert( std::pair<extent_protocol::extentid_t, extent_server::extent_t*>(id, ex) );
+	extent_map[id] = ex;
 	
   return extent_protocol::OK;
 }
@@ -63,7 +68,7 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 	}
 
 	// get extent attributes
-	a = extent_map[id]->attr;  
+	a = extent_map[id]->attr;
 
   return extent_protocol::OK;
 }
