@@ -138,7 +138,7 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 
 	// update fuse entry
 	yfs_client::fileinfo info;
-	ret = yfs->getfile(inum, info);
+	ret = yfs->getfile(file_inum, info);
 	if(ret != yfs_client::OK)
 		return ret;
 
