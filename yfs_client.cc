@@ -95,29 +95,26 @@ int
 
 yfs_client::getDirectoryContent(inum inum, std::vector<dirent> &entries)
 {
-	// get dir content
-    /*std::string buf;
+    std::string buf;
     if (ec->get(inum, buf) != extent_protocol::OK)
-        return IOERR;*/
+		return IOERR;
 
-	std::istringstream is("filenam1:inum1:filename2:inum2:filename3:inum3"); 
+	std::istringstream is(buf);
 	std::string line;
 
-	while (getline(is, line)) {
-
-		// we reach the end of the string
-		if(line.empty())
-			break;
-
+	// directory format: "dircontent" ; "inum" : "filename"
+	while( getline(is, line) ) {
 		printf("line: %s", line.c_str());
 
+		// separate content from inum and filename
+		std::string f = line.substr(line.find(";"));
+
 		dirent e;
-		// get first file info( filename1:inum1:filename2:inum2:... )
-		e.name = line.substr(0, line.find(":"));
-		e.inum = n2i(line.substr(1, line.find(":")));
+		e.name = f.substr(f.find(":"));
+		e.inum = n2i( f.substr(1, f.find(":")) );
 
 		// add new entry
-        entries.push_back(e);
+		entries.push_back(e);
 	}
 
 	return OK;
@@ -126,7 +123,7 @@ yfs_client::getDirectoryContent(inum inum, std::vector<dirent> &entries)
 int
 yfs_client::createfile(inum parent, inum inum, std::string file_name)
 {
-  printf("createfile %016llx in parent %016llx\n", inum, parent);
+	printf("createfile %016llx in parent %016llx\n", inum, parent);
 
 	// check if parent exists
 	std::string dir;
@@ -134,7 +131,7 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 		return NOENT;
 
 	// create file
-  if(ec->put(inum, "") != extent_protocol::OK)
+	if(ec->put(inum, "") != extent_protocol::OK)
 		return IOERR;
 
 	// update parent content
@@ -146,5 +143,5 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 	if(ec->put(parent, dir) != extent_protocol::OK)
 		return IOERR;
 
-  return OK;
+	return OK;
 }
