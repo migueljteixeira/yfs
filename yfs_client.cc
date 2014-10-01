@@ -138,14 +138,11 @@ yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 
 	// directory format: "dircontent" ; "inum" : "filename"
 	while( getline(is, line) ) {
-		printf("line: %s", line.c_str());
-
-		// separate content from inum and filename
-		std::string f = line.substr(line.find(";"));
+		printf("line: %s\n", line);
 
 		dirent e;
-		e.name = f.substr(f.find(":"));
-		e.inum = n2i( f.substr(1, f.find(":")) );
+		e.name = line.substr(line.find(":"));
+		e.inum = n2i( line.substr(0, line.find(":")) );
 
 		// add new entry
 		entries.push_back(e);
