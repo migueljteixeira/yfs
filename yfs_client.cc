@@ -16,6 +16,17 @@ yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
 
+	// check for root directory, if it doesn't exist we create it
+	std::string buf;
+	if(ec->get(0x00000001, buf) == extent_protocol::NOENT) {
+		printf("Creating root directory\n");
+		extent_protocol::status ret = ec->put(0x00000001, "");
+
+		if(ret != extent_protocol::OK) {
+			printf("Couldn't create root directory\n");
+			exit(0);
+		}
+	}
 }
 
 yfs_client::inum
@@ -55,8 +66,9 @@ yfs_client::ilookup(inum di, std::string name, inum &inum)
 	// get directory
 	std::list<yfs_client::dirent> dir_entries;
 	yfs_client::status ret = this->getDirectoryContent(di, dir_entries);
-	if(ret != yfs_client::OK)
+	if(ret != yfs_client::OK) {
 		return ret;
+	}
 
 	// search for file in directory
 	std::list<yfs_client::dirent>::iterator it;

@@ -14,7 +14,7 @@ class extent_server {
 			extent_protocol::attr attr;
 		};
 
-		std::map<extent_protocol::extentid_t, extent_t*> extent_map;
+		std::map<extent_protocol::extentid_t, extent_t> extent_map;
 
 	public:
 		extent_server();

@@ -13,24 +13,18 @@ extent_server::extent_server() {}
 
 int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 {
-	extent_t *ex;
-
-	// if extent exists we don't need to allocate new space
-	if(extent_map.find(id) == extent_map.end())
-		ex = (extent_t*)malloc(sizeof(extent_t));
-	else
-		ex = extent_map[id];
+	extent_t ex;
 
 	// initialize extent
-	ex->buf = buf;
-	ex->attr.atime = time(NULL);
-	ex->attr.mtime = time(NULL);
-	ex->attr.ctime = time(NULL);
-	ex->attr.size = buf.length();
+	ex.buf = buf;
+	ex.attr.size = buf.length();
+	ex.attr.atime = time(NULL);
+	ex.attr.mtime = time(NULL);
+	ex.attr.ctime = time(NULL);
 
 	// store extent in extent_map
-
-	extent_map.insert( std::pair<extent_protocol::extentid_t, extent_server::extent_t*>(id, ex) );
+	extent_map[id] = ex;
+printf("extent: %llu\n", id);
 
 	return extent_protocol::OK;
 }
@@ -43,7 +37,7 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 	}
 
 	// get extent
-	extent_t *ex = extent_map[id];
+	extent_t *ex = &extent_map[id];
 
 	// update access time with relatime
 	// only update atime if it's lower than
@@ -69,7 +63,7 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 	}
 
 	// get extent attributes
-	a = extent_map[id]->attr;
+	a = extent_map[id].attr;
 
 	return extent_protocol::OK;
 }
@@ -81,14 +75,8 @@ int extent_server::remove(extent_protocol::extentid_t id, int &)
 		return extent_protocol::NOENT;
 	}
 
-	// hold extent pointer
-	extent_t *ex = extent_map[id];
-
 	// delete extent
 	extent_map.erase(id);
-
-	// free memory
-	free(ex);
 
 	return extent_protocol::OK;
 }

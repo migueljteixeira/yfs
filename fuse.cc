@@ -186,6 +186,8 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   e.attr_timeout = 0.0;
   e.entry_timeout = 0.0;
 
+std::cout << "lookup parent: " << parent << " name: " << name << std::endl;
+
 	// check if parent is a directory
 	if(!yfs->isdir(parent)) {
 		fuse_reply_err(req, ENOTDIR);
@@ -195,8 +197,10 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	// lookup for inum of 'name'
 	yfs_client::inum l_inum;
 	yfs_client::status ret = yfs->ilookup(parent, name, l_inum);
-	if(ret != yfs_client::OK)
+	if(ret != yfs_client::OK) {
 		fuse_reply_err(req, ENOENT);
+		return;
+	}
 
 	e.ino = l_inum;
 	e.generation = 1;
@@ -206,7 +210,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 		yfs_client::fileinfo info;
 		ret = yfs->getfile(l_inum, info);
 		if(ret != yfs_client::OK)
-			fuse_reply_err(req, ENOENT);
+			fuse_reply_err(req, EIO);
 
 		e.attr.st_mode = S_IFREG | 0666;
 		e.attr.st_nlink = 1;
@@ -219,7 +223,7 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 		yfs_client::dirinfo info;
 		ret = yfs->getdir(l_inum, info);
 		if(ret != yfs_client::OK)
-			fuse_reply_err(req, ENOENT);
+			fuse_reply_err(req, EIO);
 
 		e.attr.st_mode = S_IFDIR | 0777;
 		e.attr.st_nlink = 2;
