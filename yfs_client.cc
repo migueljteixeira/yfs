@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <iterator>
+#include <list>
 
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
@@ -45,6 +47,27 @@ bool
 yfs_client::isdir(inum inum)
 {
   return ! isfile(inum);
+}
+
+int
+yfs_client::ilookup(inum di, std::string name, inum &inum)
+{
+	// get directory
+	std::list<yfs_client::dirent> dir_entries;
+	yfs_client::status ret = this->getDirectoryContent(di, dir_entries);
+	if(ret != yfs_client::OK)
+		return ret;
+
+	// search for file in directory
+	std::list<yfs_client::dirent>::iterator it;
+	for(it = dir_entries.begin(); it != dir_entries.end(); it++) {
+		if((*it).name.compare(name) == 0) {
+			inum = (*it).inum;
+			return yfs_client::OK;
+		}
+	}
+
+	return yfs_client::NOENT;
 }
 
 int
@@ -92,11 +115,10 @@ yfs_client::getdir(inum inum, dirinfo &din)
 }
 
 int
-
-yfs_client::getDirectoryContent(inum inum, std::vector<dirent> &entries)
+yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 {
-    std::string buf;
-    if (ec->get(inum, buf) != extent_protocol::OK)
+	std::string buf;
+	if (ec->get(inum, buf) != extent_protocol::OK)
 		return IOERR;
 
 	std::istringstream is(buf);

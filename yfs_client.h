@@ -4,7 +4,7 @@
 #include <string>
 //#include "yfs_protocol.h"
 #include "extent_client.h"
-#include <vector>
+#include <list>
 
 class yfs_client {
 	extent_client *ec;
@@ -39,12 +39,12 @@ class yfs_client {
 
 		bool isfile(inum);
 		bool isdir(inum);
-		inum ilookup(inum di, std::string name);
+		int ilookup(inum di, std::string name, inum &inum);
 
 		int getfile(inum, fileinfo &);
 		int getdir(inum, dirinfo &);
 
-		int getDirectoryContent(inum, std::vector<dirent> &);
+		int getDirectoryContent(inum, std::list<dirent> &);
 		int createfile(inum, inum, std::string);
 };
 
