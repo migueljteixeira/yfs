@@ -133,15 +133,16 @@ yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 	if (ec->get(inum, buf) != extent_protocol::OK)
 		return IOERR;
 
-	std::istringstream is(buf);
-	std::string line;
-
 	// directory format: "dircontent" ; "inum" : "filename"
-	while( getline(is, line) ) {
+	std::vector<std::string> tokens = split(buf, ';');
+	
+	std::vector<std::string>::iterator it;
+	for(it = tokens.begin(); it != tokens.end(); it++) {
+		std::vector<std::string> dir_info = split(*it, ':');
 
 		dirent e;
-		e.name = line.substr(line.find(":") + 1);
-		e.inum = n2i( line.substr(0, line.find(":")) );
+		e.name = dir_info[1];
+		e.inum = n2i(dir_info[0]);
 
 		// add new entry
 		entries.push_back(e);
