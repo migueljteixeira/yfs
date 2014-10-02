@@ -24,7 +24,6 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 
 	// store extent in extent_map
 	extent_map[id] = ex;
-printf("extent: %llu\n", id);
 
 	return extent_protocol::OK;
 }

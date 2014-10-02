@@ -14,7 +14,7 @@
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
-  ec = new extent_client(extent_dst);
+	ec = new extent_client(extent_dst);
 
 	// check for root directory, if it doesn't exist we create it
 	std::string buf;
@@ -154,8 +154,6 @@ yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 int
 yfs_client::createfile(inum parent, inum inum, std::string file_name)
 {
-	printf("createfile %016llx in parent %016llx\n", inum, parent);
-
 	// check if parent exists
 	std::string dir;
 	if(ec->get(parent, dir) != extent_protocol::OK)

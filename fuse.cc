@@ -181,12 +181,10 @@ void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent,
 void
 fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
-  struct fuse_entry_param e;
+	struct fuse_entry_param e;
 
-  e.attr_timeout = 0.0;
-  e.entry_timeout = 0.0;
-
-std::cout << "lookup parent: " << parent << " name: " << name << std::endl;
+	e.attr_timeout = 0.0;
+	e.entry_timeout = 0.0;
 
 	// check if parent is a directory
 	if(!yfs->isdir(parent)) {
@@ -270,8 +268,6 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 	yfs_client::inum inum = ino; // req->in.h.nodeid;
 	struct dirbuf b;
 	yfs_client::dirent e;
-
-	printf("fuseserver_readdir\n");
 
 	if(!yfs->isdir(inum)){
 		fuse_reply_err(req, ENOTDIR);
