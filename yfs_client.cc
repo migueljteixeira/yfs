@@ -8,12 +8,25 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <iterator>
+#include <list>
 
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
-  ec = new extent_client(extent_dst);
+	ec = new extent_client(extent_dst);
 
+	// check for root directory, if it doesn't exist we create it
+	std::string buf;
+	if(ec->get(0x00000001, buf) == extent_protocol::NOENT) {
+		printf("Creating root directory\n");
+		extent_protocol::status ret = ec->put(0x00000001, "");
+
+		if(ret != extent_protocol::OK) {
+			printf("Couldn't create root directory\n");
+			exit(0);
+		}
+	}
 }
 
 yfs_client::inum
@@ -45,6 +58,28 @@ bool
 yfs_client::isdir(inum inum)
 {
   return ! isfile(inum);
+}
+
+int
+yfs_client::ilookup(inum di, std::string name, inum &inum)
+{
+	// get directory
+	std::list<yfs_client::dirent> dir_entries;
+	yfs_client::status ret = this->getDirectoryContent(di, dir_entries);
+	if(ret != yfs_client::OK) {
+		return ret;
+	}
+
+	// search for file in directory
+	std::list<yfs_client::dirent>::iterator it;
+	for(it = dir_entries.begin(); it != dir_entries.end(); it++) {
+		if((*it).name.compare(name) == 0) {
+			inum = (*it).inum;
+			return yfs_client::OK;
+		}
+	}
+
+	return yfs_client::NOENT;
 }
 
 int
@@ -91,5 +126,51 @@ yfs_client::getdir(inum inum, dirinfo &din)
   return r;
 }
 
+int
+yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
+{
+	std::string buf;
+	if (ec->get(inum, buf) != extent_protocol::OK)
+		return IOERR;
 
+	// directory format: "dircontent" ; "inum" : "filename"
+	std::vector<std::string> tokens = split(buf, ';');
+	
+	std::vector<std::string>::iterator it;
+	for(it = tokens.begin(); it != tokens.end(); it++) {
+		std::vector<std::string> dir_info = split(*it, ':');
 
+		dirent e;
+		e.name = dir_info[1];
+		e.inum = n2i(dir_info[0]);
+
+		// add new entry
+		entries.push_back(e);
+	}
+
+	return OK;
+}
+
+int
+yfs_client::createfile(inum parent, inum inum, std::string file_name)
+{
+	// check if parent exists
+	std::string dir;
+	if(ec->get(parent, dir) != extent_protocol::OK)
+		return NOENT;
+
+	// create file
+	if(ec->put(inum, "") != extent_protocol::OK)
+		return IOERR;
+
+	// update parent content
+	if(!dir.empty())
+		dir.append(";");
+	dir.append(filename(inum) + ":" + file_name);
+
+	// update parent
+	if(ec->put(parent, dir) != extent_protocol::OK)
+		return IOERR;
+
+	return OK;
+}
