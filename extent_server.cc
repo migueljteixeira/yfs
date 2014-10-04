@@ -67,6 +67,30 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 	return extent_protocol::OK;
 }
 
+int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr a)
+{
+	// check if extent exists
+	if(extent_map.find(id) == extent_map.end()) {
+		return extent_protocol::NOENT;
+	}
+
+	unsigned int old_size = extent_map[id].attr.size;
+	unsigned int new_size = a.size;
+	
+	// if file size changed, we have to adapt the string
+	if(old_size > new_size) {
+		extent_map[id].buf = extent_map[id].buf.substr(0, new_size);
+	}
+	else if(old_size < new_size) {
+		extent_map[id].buf.resize(new_size);
+	}
+
+	// set extent attributes
+	extent_map[id].attr = a;
+
+	return extent_protocol::OK;
+}
+
 int extent_server::remove(extent_protocol::extentid_t id, int &)
 {
 	// check if extent exists
