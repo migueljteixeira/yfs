@@ -61,6 +61,8 @@ class yfs_client {
 
 		int getDirectoryContent(inum, std::list<dirent> &);
 		int createfile(inum, inum, std::string);
+
+		int write(inum, std::string file, off_t offset);
 };
 
 #endif 

@@ -11,13 +11,26 @@
 extent_server::extent_server() {}
 
 
-int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
+int extent_server::put(extent_protocol::extentid_t id, int offset, std::string file, int &r)
 {
 	extent_t ex;
 
+	printf("extent_server::put -> %d\n", offset);
+	
+	// check if the element already exists
+	if(extent_map.count(id) > 0)
+		ex = extent_map[id];
+
+	// if the offset is bigger than the string itself, we need to resize it
+	if(offset > ex.buf.size()) {
+		ex.buf.resize(offset);
+		ex.buf.append(file);
+	}
+	else
+		ex.buf.replace(offset, file.size(), file);
+
 	// initialize extent
-	ex.buf = buf;
-	ex.attr.size = buf.length();
+	ex.attr.size = ex.buf.size();
 	ex.attr.atime = time(NULL);
 	ex.attr.mtime = time(NULL);
 	ex.attr.ctime = time(NULL);

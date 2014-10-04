@@ -114,10 +114,20 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
   struct fuse_file_info *fi)
 {
   // You fill this in
-#if 0
-  fuse_reply_write(req, bytes_written);
+#if 1
+	//fuse_reply_write(req, bytes_written);
+
+	std::string new_file;
+	new_file.append(buf, size);
+
+	if(yfs->write(ino, new_file, off) != yfs_client::OK) {
+		fuse_reply_err(req, ENOSYS);
+		return;
+	}
+	
+	fuse_reply_write(req, size);
 #else
-  fuse_reply_err(req, ENOSYS);
+	fuse_reply_err(req, ENOSYS);
 #endif
 }
 
