@@ -175,7 +175,6 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 	return OK;
 }
 
-
 int
 yfs_client::write(inum inum, std::string file, off_t offset) {
 	
@@ -185,5 +184,22 @@ yfs_client::write(inum inum, std::string file, off_t offset) {
 	return OK;
 }
 
+int
+yfs_client::setfilesize(inum inum, int size)
+{
+	// get current file size
+	extent_protocol::attr attr;
+	
+	// read file attributes
+    if(ec->getattr(inum, attr) != extent_protocol::OK)
+        return NOENT;
 
+	attr.size = size;
+
+	// rewrite file attributes
+	if(ec->setattr(inum, attr) != extent_protocol::OK)
+		return NOENT;
+
+	return OK;
+}
 
