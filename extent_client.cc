@@ -20,10 +20,10 @@ extent_client::extent_client(std::string dst)
 }
 
 extent_protocol::status
-extent_client::get(extent_protocol::extentid_t eid, std::string &buf)
+extent_client::get(extent_protocol::extentid_t eid, int offset, int size, std::string &file)
 {
 	extent_protocol::status ret = extent_protocol::OK;
-	ret = cl->call(extent_protocol::get, eid, buf);
+	ret = cl->call(extent_protocol::get, eid, offset, size, file);
 	return ret;
 }
 

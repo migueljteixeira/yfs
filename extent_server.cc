@@ -15,7 +15,7 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 {
 	extent_t ex;
 
-	printf("extent_server::put -> %d\n", offset);
+	printf("PUT FILE offset: %d", offset);
 	
 	// check if the element already exists
 	if(extent_map.count(id) > 0)
@@ -41,8 +41,10 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 	return extent_protocol::OK;
 }
 
-int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
+int extent_server::get(extent_protocol::extentid_t id, int offset, int size, std::string &file)
 {
+	printf("GET FILE size: %d, offset: %d",size, offset);
+
 	// check if extent exists
 	if(extent_map.find(id) == extent_map.end()) {
 		return extent_protocol::NOENT;
@@ -50,6 +52,8 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 
 	// get extent
 	extent_t *ex = &extent_map[id];
+
+	ex->buf.substr(offset, size);
 
 	// update access time with relatime
 	// only update atime if it's lower than
@@ -62,7 +66,7 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 	}
 
 	// get buf
-	buf = ex->buf;
+	file = ex->buf;
 
 	return extent_protocol::OK;
 }

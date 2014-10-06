@@ -63,6 +63,8 @@ class yfs_client {
 		int createfile(inum, inum, std::string);
 
 		int write(inum, std::string file, off_t offset);
+		int read(inum, size_t size, off_t offset, std::string file);
+
 		int setfilesize(inum, int);
 };
 

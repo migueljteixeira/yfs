@@ -107,11 +107,19 @@ void
 fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
       off_t off, struct fuse_file_info *fi)
 {
-  // You fill this in
-#if 0
-  fuse_reply_buf(req, buf, size);
+// You fill this in
+#if 1
+	printf("READ size: %d, offset: %lld",size, off);
+
+	std::string file;
+	if(yfs->read(ino, size, off, file) != yfs_client::OK) {
+		fuse_reply_err(req, ENOSYS);
+		return;
+	}
+
+	fuse_reply_buf(req, file.data(), file.size());
 #else
-  fuse_reply_err(req, ENOSYS);
+	fuse_reply_err(req, ENOSYS);
 #endif
 }
 
@@ -122,7 +130,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 {
   // You fill this in
 #if 1
-	//fuse_reply_write(req, bytes_written);
+	printf("WRITE size: %d, offset: %lld",size, off);
 
 	std::string new_file;
 	new_file.append(buf, size);

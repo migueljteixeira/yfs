@@ -18,7 +18,7 @@ yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 
 	// check for root directory, if it doesn't exist we create it
 	std::string buf;
-	if(ec->get(0x00000001, buf) == extent_protocol::NOENT) {
+	if(ec->get(0x00000001, 0, 0, buf) == extent_protocol::NOENT) {
 		printf("Creating root directory\n");
 		extent_protocol::status ret = ec->put(0x00000001, "", 0);
 
@@ -130,7 +130,7 @@ int
 yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 {
 	std::string buf;
-	if (ec->get(inum, buf) != extent_protocol::OK)
+	if (ec->get(inum, 0, 0, buf) != extent_protocol::OK)
 		return IOERR;
 
 	// directory format: "dircontent" ; "inum" : "filename"
@@ -156,7 +156,7 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 {
 	// check if parent exists
 	std::string dir;
-	if(ec->get(parent, dir) != extent_protocol::OK)
+	if(ec->get(parent, 0, 0, dir) != extent_protocol::OK)
 		return NOENT;
 
 	// create file
@@ -179,6 +179,15 @@ int
 yfs_client::write(inum inum, std::string file, off_t offset) {
 	
 	if(ec->put(inum, file, offset) != extent_protocol::OK)
+		return IOERR;
+
+	return OK;
+}
+
+int
+yfs_client::read(inum inum, size_t size, off_t offset, std::string file) {
+
+	if(ec->get(inum, size, offset, file) != extent_protocol::OK)
 		return IOERR;
 
 	return OK;
