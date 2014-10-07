@@ -107,20 +107,16 @@ void
 fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
       off_t off, struct fuse_file_info *fi)
 {
-// You fill this in
-#if 1
+	// You fill this in
 	printf("READ size: %d, offset: %lld",size, off);
 
 	std::string file;
-	if(yfs->read(ino, size, off, file) != yfs_client::OK) {
+	if(yfs->read(ino, off, size, file) != yfs_client::OK) {
 		fuse_reply_err(req, ENOSYS);
 		return;
 	}
 
 	fuse_reply_buf(req, file.data(), file.size());
-#else
-	fuse_reply_err(req, ENOSYS);
-#endif
 }
 
 void
@@ -135,7 +131,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 	std::string new_file;
 	new_file.append(buf, size);
 
-	if(yfs->write(ino, new_file, off) != yfs_client::OK) {
+	if(yfs->write(ino, off, new_file) != yfs_client::OK) {
 		fuse_reply_err(req, ENOSYS);
 		return;
 	}
@@ -322,12 +318,21 @@ void
 fuseserver_open(fuse_req_t req, fuse_ino_t ino,
      struct fuse_file_info *fi)
 {
-  // You fill this in
-#if 1
-  fuse_reply_open(req, fi);
-#else
-  fuse_reply_err(req, ENOSYS);
-#endif
+	std::cout << "OPEN inum: " << ino << std::endl;
+	
+	// check if is a directory
+	if(yfs->isdir(ino)) {
+		fuse_reply_err(req, EISDIR);
+		return;
+	}
+
+	// check if file exists
+	yfs_client::fileinfo info;
+	if(yfs->getfile(ino, info) != extent_protocol::OK) {
+		fuse_reply_err(req, ENOENT);
+	}
+
+  	fuse_reply_open(req, fi);
 }
 
 void

@@ -11,11 +11,11 @@
 extent_server::extent_server() {}
 
 
-int extent_server::put(extent_protocol::extentid_t id, int offset, std::string file, int &r)
+int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std::string file, int &r)
 {
 	extent_t ex;
 
-	printf("PUT FILE offset: %d", offset);
+	std::cout << "PUT FILE inum: " << id << " offset: " << offset << " string: " << file << std::endl;
 	
 	// check if the element already exists
 	if(extent_map.count(id) > 0)
@@ -27,7 +27,7 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 		ex.buf.append(file);
 	}
 	else
-		ex.buf.replace(offset, file.size(), file);
+		ex.buf = ex.buf.replace(offset, file.size(), file);
 
 	// initialize extent
 	ex.attr.size = ex.buf.size();
@@ -38,12 +38,14 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 	// store extent in extent_map
 	extent_map[id] = ex;
 
+	std::cout << "new file inum: " << id << " string: " << extent_map[id].buf << std::endl;
+
 	return extent_protocol::OK;
 }
 
-int extent_server::get(extent_protocol::extentid_t id, int offset, int size, std::string &file)
+int extent_server::get(extent_protocol::extentid_t id, unsigned int offset, unsigned int len, std::string &file)
 {
-	printf("GET FILE size: %d, offset: %d",size, offset);
+	printf("GET FILE inum: %llu len: %d, offset: %d\n", id, len, offset);
 
 	// check if extent exists
 	if(extent_map.find(id) == extent_map.end()) {
@@ -53,7 +55,16 @@ int extent_server::get(extent_protocol::extentid_t id, int offset, int size, std
 	// get extent
 	extent_t *ex = &extent_map[id];
 
-	ex->buf.substr(offset, size);
+	// if its a file, we truncate the string if needed
+	if(len > 0) {
+		if(offset > ex->attr.size)
+			return extent_protocol::IOERR;
+
+		file = ex->buf.substr(offset, std::min(len, ex->attr.size));
+	}
+	else {
+		file = ex->buf;
+	}
 
 	// update access time with relatime
 	// only update atime if it's lower than
@@ -65,8 +76,7 @@ int extent_server::get(extent_protocol::extentid_t id, int offset, int size, std
 		ex->attr.atime = current_time;
 	}
 
-	// get buf
-	file = ex->buf;
+	std::cout << "get file inum: " << id << " string: " << file << std::endl;
 
 	return extent_protocol::OK;
 }

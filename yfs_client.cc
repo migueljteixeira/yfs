@@ -20,7 +20,7 @@ yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 	std::string buf;
 	if(ec->get(0x00000001, 0, 0, buf) == extent_protocol::NOENT) {
 		printf("Creating root directory\n");
-		extent_protocol::status ret = ec->put(0x00000001, "", 0);
+		extent_protocol::status ret = ec->put(0x00000001, 0, "");
 
 		if(ret != extent_protocol::OK) {
 			printf("Couldn't create root directory\n");
@@ -160,7 +160,7 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 		return NOENT;
 
 	// create file
-	if(ec->put(inum, "", 0) != extent_protocol::OK)
+	if(ec->put(inum, 0, "") != extent_protocol::OK)
 		return IOERR;
 
 	// update parent content
@@ -169,25 +169,25 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 	dir.append(filename(inum) + ":" + file_name);
 
 	// update parent
-	if(ec->put(parent, dir, 0) != extent_protocol::OK)
+	if(ec->put(parent, 0, dir) != extent_protocol::OK)
 		return IOERR;
 
 	return OK;
 }
 
 int
-yfs_client::write(inum inum, std::string file, off_t offset) {
+yfs_client::write(inum inum, off_t offset, std::string file) {
 	
-	if(ec->put(inum, file, offset) != extent_protocol::OK)
+	if(ec->put(inum, offset, file) != extent_protocol::OK)
 		return IOERR;
 
 	return OK;
 }
 
 int
-yfs_client::read(inum inum, size_t size, off_t offset, std::string file) {
+yfs_client::read(inum inum, off_t offset, size_t len, std::string file) {
 
-	if(ec->get(inum, size, offset, file) != extent_protocol::OK)
+	if(ec->get(inum, offset, len, file) != extent_protocol::OK)
 		return IOERR;
 
 	return OK;
