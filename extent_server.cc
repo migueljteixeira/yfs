@@ -22,12 +22,14 @@ int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std:
 		ex = extent_map[id];
 
 	// if the offset is bigger than the string itself, we need to resize it
-	if(offset + file.size() > ex.buf.size()) {
-		ex.buf.resize(ex.buf.size() + offset);
-		ex.buf = ex.buf.replace(offset, file.size(), file);
+	if(offset >= ex.buf.size()) {
+		std::string str = std::string(offset + file.size(), '\0');
+        str.replace(0, ex.buf.size(), ex.buf);
+		str.replace(offset, file.size(), file);
+        ex.buf = str;
 	}
 	else
-		ex.buf = ex.buf.replace(offset, file.size(), file);
+		ex.buf.replace(offset, file.size(), file);
 
 	// initialize extent
 	ex.attr.size = ex.buf.size();
@@ -52,28 +54,27 @@ int extent_server::get(extent_protocol::extentid_t id, unsigned int offset, unsi
 		return extent_protocol::NOENT;
 	}
 
-	// get extent
-	extent_t *ex = &extent_map[id];
-
 	// if its a file, we truncate the string if needed
 	if(len > 0) {
-		if(offset > ex->attr.size)
-			return extent_protocol::IOERR;
-
-		file = ex->buf.substr(offset, std::min(len, ex->attr.size));
+		if(offset >= extent_map[id].attr.size)
+			file = "";
+		else {
+			file = extent_map[id].buf.substr(offset, len);
+		}
 	}
+	// its a directory
 	else {
-		file = ex->buf;
+		file = extent_map[id].buf;
 	}
 
 	// update access time with relatime
 	// only update atime if it's lower than
 	// mtime, ctime or older than 24h
 	unsigned int current_time = time(NULL);
-	if(ex->attr.atime < ex->attr.mtime
-			|| ex->attr.atime < ex->attr.ctime
-			|| ex->attr.atime < (current_time - 24*60*60)) {
-		ex->attr.atime = current_time;
+	if(extent_map[id].attr.atime < extent_map[id].attr.mtime
+			|| extent_map[id].attr.atime < extent_map[id].attr.ctime
+			|| extent_map[id].attr.atime < (current_time - 24*60*60)) {
+		extent_map[id].attr.atime = current_time;
 	}
 
 	std::cout << "get file inum: " << id << " string: " << file << std::endl;

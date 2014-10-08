@@ -115,7 +115,7 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 		return;
 	}
 
-	fuse_reply_buf(req, file.data(), file.size());
+	fuse_reply_buf(req, file.c_str(), file.size());
 }
 
 void
@@ -125,10 +125,7 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
 {
 	printf("WRITE size: %d, offset: %lld, str: %s\n",size, off, buf);
 
-	std::string new_file;
-	new_file.append(buf);
-
-	if(yfs->write(ino, off, new_file) != yfs_client::OK) {
+	if(yfs->write(ino, off, std::string(buf, size)) != yfs_client::OK) {
 		fuse_reply_err(req, EIO);
 		return;
 	}
