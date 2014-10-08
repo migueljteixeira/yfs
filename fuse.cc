@@ -81,7 +81,6 @@ fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
 void
 fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
-  printf("fuseserver_setattr 0x%x\n", to_set);
   if (FUSE_SET_ATTR_SIZE & to_set) {
 	// check if its a directory, we can't change its size
 	if(yfs->isdir(ino)) {
@@ -107,8 +106,6 @@ void
 fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
       off_t off, struct fuse_file_info *fi)
 {
-	printf("READ size: %d, offset: %lld\n",size, off);
-
 	std::string file;
 	if(yfs->read(ino, off, size, file) != yfs_client::OK) {
 		fuse_reply_err(req, EIO);
@@ -123,8 +120,6 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
   const char *buf, size_t size, off_t off,
   struct fuse_file_info *fi)
 {
-	printf("WRITE size: %d, offset: %lld, str: %s\n",size, off, buf);
-
 	if(yfs->write(ino, off, std::string(buf, size)) != yfs_client::OK) {
 		fuse_reply_err(req, EIO);
 		return;
@@ -309,19 +304,16 @@ void
 fuseserver_open(fuse_req_t req, fuse_ino_t ino,
      struct fuse_file_info *fi)
 {
-	std::cout << "OPEN inum: " << ino << std::endl;
-	
 	// check if is a directory
 	if(yfs->isdir(ino)) {
 		fuse_reply_err(req, EISDIR);
-		return;
 	}
 
 	// check if file exists
-	yfs_client::fileinfo info;
+	/*yfs_client::fileinfo info;
 	if(yfs->getfile(ino, info) != extent_protocol::OK) {
 		fuse_reply_err(req, ENOENT);
-	}
+	}*/
 
   	fuse_reply_open(req, fi);
 }

@@ -29,19 +29,20 @@ extent_client::get(extent_protocol::extentid_t eid, unsigned int offset, unsigne
 
 extent_protocol::status
 extent_client::getattr(extent_protocol::extentid_t eid, 
-		       extent_protocol::attr &attr)
+		       extent_protocol::attr &a)
 {
 	extent_protocol::status ret = extent_protocol::OK;
-	ret = cl->call(extent_protocol::getattr, eid, attr);
+	ret = cl->call(extent_protocol::getattr, eid, a);
 	return ret;
 }
 
 extent_protocol::status
 extent_client::setattr(extent_protocol::extentid_t eid, 
-		       extent_protocol::attr attr)
+		       extent_protocol::attr a)
 {
 	extent_protocol::status ret = extent_protocol::OK;
-	ret = cl->call(extent_protocol::setattr, eid, attr);
+	int r;
+	ret = cl->call(extent_protocol::setattr, eid, a, r);
 	return ret;
 }
 

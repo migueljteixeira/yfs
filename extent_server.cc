@@ -14,8 +14,6 @@ extent_server::extent_server() {}
 int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std::string file, int &r)
 {
 	extent_t ex;
-
-	std::cout << "PUT FILE inum: " << id << " offset: " << offset << " size: " << extent_map[id].buf.size() << " string: " << file << std::endl;
 	
 	// check if the element already exists
 	if(extent_map.count(id) > 0)
@@ -40,15 +38,11 @@ int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std:
 	// store extent in extent_map
 	extent_map[id] = ex;
 
-	std::cout << "new file inum: " << id << " string: " << extent_map[id].buf << std::endl;
-
 	return extent_protocol::OK;
 }
 
 int extent_server::get(extent_protocol::extentid_t id, unsigned int offset, unsigned int len, std::string &file)
 {
-	printf("GET FILE inum: %llu len: %d, offset: %d\n", id, len, offset);
-
 	// check if extent exists
 	if(extent_map.find(id) == extent_map.end()) {
 		return extent_protocol::NOENT;
@@ -77,8 +71,6 @@ int extent_server::get(extent_protocol::extentid_t id, unsigned int offset, unsi
 		extent_map[id].attr.atime = current_time;
 	}
 
-	std::cout << "get file inum: " << id << " string: " << file << std::endl;
-
 	return extent_protocol::OK;
 }
 
@@ -95,7 +87,7 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 	return extent_protocol::OK;
 }
 
-int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr a)
+int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr a, int &)
 {
 	// check if extent exists
 	if(extent_map.find(id) == extent_map.end()) {
