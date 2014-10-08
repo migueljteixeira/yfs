@@ -15,16 +15,16 @@ int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std:
 {
 	extent_t ex;
 
-	std::cout << "PUT FILE inum: " << id << " offset: " << offset << " string: " << file << std::endl;
+	std::cout << "PUT FILE inum: " << id << " offset: " << offset << " size: " << extent_map[id].buf.size() << " string: " << file << std::endl;
 	
 	// check if the element already exists
 	if(extent_map.count(id) > 0)
 		ex = extent_map[id];
 
 	// if the offset is bigger than the string itself, we need to resize it
-	if(offset > ex.buf.size()) {
-		ex.buf.resize(offset);
-		ex.buf.append(file);
+	if(offset + file.size() > ex.buf.size()) {
+		ex.buf.resize(ex.buf.size() + offset);
+		ex.buf = ex.buf.replace(offset, file.size(), file);
 	}
 	else
 		ex.buf = ex.buf.replace(offset, file.size(), file);

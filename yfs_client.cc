@@ -185,7 +185,7 @@ yfs_client::write(inum inum, off_t offset, std::string file) {
 }
 
 int
-yfs_client::read(inum inum, off_t offset, size_t len, std::string file) {
+yfs_client::read(inum inum, off_t offset, size_t len, std::string &file) {
 
 	if(ec->get(inum, offset, len, file) != extent_protocol::OK)
 		return IOERR;
