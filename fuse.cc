@@ -309,12 +309,6 @@ fuseserver_open(fuse_req_t req, fuse_ino_t ino,
 		fuse_reply_err(req, EISDIR);
 	}
 
-	// check if file exists
-	/*yfs_client::fileinfo info;
-	if(yfs->getfile(ino, info) != extent_protocol::OK) {
-		fuse_reply_err(req, ENOENT);
-	}*/
-
   	fuse_reply_open(req, fi);
 }
 
