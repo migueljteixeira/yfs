@@ -212,3 +212,52 @@ yfs_client::setfilesize(inum inum, int size)
 	return OK;
 }
 
+int
+yfs_client::remove(inum parent, std::string name){
+
+
+	// check if parent exists
+	//std::string dir;
+	//if(ec->get(parent, 0, 0, dir) != extent_protocol::OK)
+	//	return NOENT;
+
+	//searches for file
+	yfs_client::inum l_inum;
+	yfs_client::status ret = this->ilookup(parent, name, l_inum);
+	if(ret != yfs_client::OK)
+		std::cout << "ERRO 1" << std::endl;
+		return NOENT;
+
+	//update parent content
+	std::list<yfs_client::dirent> dir_entries;
+	ret = this->getDirectoryContent(parent, dir_entries);
+	if(ret != yfs_client::OK) {
+		std::cout << "ERRO 3" << std::endl;
+		return ret;
+	}
+
+	std::string dir;
+	std::list<yfs_client::dirent>::iterator it;
+	for(it = dir_entries.begin(); it != dir_entries.end(); it++) {
+		if((*it).name.compare(name) == 0) {
+
+	
+		}
+		else{
+			dir.append(filename((*it).inum) + ":" + (*it).name);
+		}
+	}
+
+	//delete file
+	if (ec->remove(l_inum) != extent_protocol::OK) 
+		std::cout << "ERRO 2" << std::endl;
+		return IOERR;
+
+	//update parent content
+	if(ec->put(parent, 0, dir) != extent_protocol::OK)
+		std::cout << "ERRO 4" << std::endl;
+		return IOERR;
+
+	return OK;
+}
+

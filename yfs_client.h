@@ -66,6 +66,9 @@ class yfs_client {
 		int read(inum, off_t offset, size_t len, std::string &file);
 
 		int setfilesize(inum, int);
+
+		int remove (inum, std::string);
+
 };
 
 #endif 
