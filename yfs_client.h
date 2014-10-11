@@ -58,17 +58,15 @@ class yfs_client {
 
 		int getfile(inum, fileinfo &);
 		int getdir(inum, dirinfo &);
-
 		int getDirectoryContent(inum, std::list<dirent> &);
+		
 		int createfile(inum, inum, std::string);
+		int removefile(inum, std::string);
 
 		int write(inum, off_t offset, std::string file);
 		int read(inum, off_t offset, size_t len, std::string &file);
 
 		int setfilesize(inum, int);
-
-		int remove (inum, std::string);
-
 };
 
 #endif 

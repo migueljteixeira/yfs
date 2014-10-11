@@ -176,6 +176,45 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 }
 
 int
+yfs_client::removefile(inum parent, std::string name)
+{
+	// check if parent exists
+	std::string dir;
+	if(ec->get(parent, 0, 0, dir) != extent_protocol::OK)
+		return NOENT;
+
+	// get file inum
+	yfs_client::inum l_inum;
+	yfs_client::status ret = this->ilookup(parent, name, l_inum);
+	if(ret != yfs_client::OK)
+		return NOENT;
+
+	// get directory content
+	std::list<yfs_client::dirent> dir_entries;
+	ret = this->getDirectoryContent(parent, dir_entries);
+	if(ret != yfs_client::OK)
+		return ret;
+
+	// update directory content
+	std::string new_content;
+	std::list<yfs_client::dirent>::iterator it;
+	for(it = dir_entries.begin(); it != dir_entries.end(); it++) {
+		if((*it).name.compare(name) != 0)
+			new_content.append(filename((*it).inum) + ":" + (*it).name);
+	}
+
+	// remove file
+	if (ec->remove(l_inum) != extent_protocol::OK)
+		return IOERR;
+
+	// update parent content
+	if(ec->put(parent, -1, new_content) != extent_protocol::OK)
+		return IOERR;
+
+	return OK;
+}
+
+int
 yfs_client::write(inum inum, off_t offset, std::string file) {
 	
 	if(ec->put(inum, offset, file) != extent_protocol::OK)
@@ -208,55 +247,6 @@ yfs_client::setfilesize(inum inum, int size)
 	// rewrite file attributes
 	if(ec->setattr(inum, attr) != extent_protocol::OK)
 		return NOENT;
-
-	return OK;
-}
-
-int
-yfs_client::remove(inum parent, std::string name){
-
-
-	// check if parent exists
-	//std::string dir;
-	//if(ec->get(parent, 0, 0, dir) != extent_protocol::OK)
-	//	return NOENT;
-
-	//searches for file
-	yfs_client::inum l_inum;
-	yfs_client::status ret = this->ilookup(parent, name, l_inum);
-	if(ret != yfs_client::OK)
-		std::cout << "ERRO 1" << std::endl;
-		return NOENT;
-
-	//update parent content
-	std::list<yfs_client::dirent> dir_entries;
-	ret = this->getDirectoryContent(parent, dir_entries);
-	if(ret != yfs_client::OK) {
-		std::cout << "ERRO 3" << std::endl;
-		return ret;
-	}
-
-	std::string dir;
-	std::list<yfs_client::dirent>::iterator it;
-	for(it = dir_entries.begin(); it != dir_entries.end(); it++) {
-		if((*it).name.compare(name) == 0) {
-
-	
-		}
-		else{
-			dir.append(filename((*it).inum) + ":" + (*it).name);
-		}
-	}
-
-	//delete file
-	if (ec->remove(l_inum) != extent_protocol::OK) 
-		std::cout << "ERRO 2" << std::endl;
-		return IOERR;
-
-	//update parent content
-	if(ec->put(parent, 0, dir) != extent_protocol::OK)
-		std::cout << "ERRO 4" << std::endl;
-		return IOERR;
 
 	return OK;
 }

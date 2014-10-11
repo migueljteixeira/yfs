@@ -28,6 +28,24 @@ extent_client::get(extent_protocol::extentid_t eid, unsigned int offset, unsigne
 }
 
 extent_protocol::status
+extent_client::put(extent_protocol::extentid_t eid, int offset, std::string buf)
+{
+	extent_protocol::status ret = extent_protocol::OK;
+	int r;
+	ret = cl->call(extent_protocol::put, eid, offset, buf, r);
+	return ret;
+}
+
+extent_protocol::status
+extent_client::remove(extent_protocol::extentid_t eid)
+{
+	extent_protocol::status ret = extent_protocol::OK;
+	int r;
+	ret = cl->call(extent_protocol::remove, eid, r);
+	return ret;
+}
+
+extent_protocol::status
 extent_client::getattr(extent_protocol::extentid_t eid, 
 		       extent_protocol::attr &a)
 {
@@ -45,23 +63,4 @@ extent_client::setattr(extent_protocol::extentid_t eid,
 	ret = cl->call(extent_protocol::setattr, eid, a, r);
 	return ret;
 }
-
-extent_protocol::status
-extent_client::put(extent_protocol::extentid_t eid, unsigned int offset, std::string buf)
-{
-	extent_protocol::status ret = extent_protocol::OK;
-	int r;
-	ret = cl->call(extent_protocol::put, eid, offset, buf, r);
-	return ret;
-}
-
-extent_protocol::status
-extent_client::remove(extent_protocol::extentid_t eid)
-{
-	extent_protocol::status ret = extent_protocol::OK;
-	int r;
-	ret = cl->call(extent_protocol::remove, eid, r);
-	return ret;
-}
-
 

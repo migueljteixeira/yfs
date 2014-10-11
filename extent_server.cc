@@ -11,7 +11,7 @@
 extent_server::extent_server() {}
 
 
-int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std::string file, int &r)
+int extent_server::put(extent_protocol::extentid_t id, int offset, std::string file, int &r)
 {
 	extent_t ex;
 	
@@ -19,8 +19,12 @@ int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std:
 	if(extent_map.count(id) > 0)
 		ex = extent_map[id];
 
+	// if the offset is negative we will replace all content
+	if(offset < 0)
+		ex.buf = file;
+
 	// if the offset is bigger than the string itself, we need to resize it
-	if(offset >= ex.buf.size()) {
+	else if(offset >= ex.buf.size()) {
 		std::string str = std::string(offset + file.size(), '\0');
         str.replace(0, ex.buf.size(), ex.buf);
 		str.replace(offset, file.size(), file);
@@ -37,6 +41,19 @@ int extent_server::put(extent_protocol::extentid_t id, unsigned int offset, std:
 
 	// store extent in extent_map
 	extent_map[id] = ex;
+
+	return extent_protocol::OK;
+}
+
+int extent_server::remove(extent_protocol::extentid_t id, int &)
+{
+	// check if extent exists
+	if(extent_map.find(id) == extent_map.end()) {
+		return extent_protocol::NOENT;
+	}
+
+	// remove extent
+	extent_map.erase(id);
 
 	return extent_protocol::OK;
 }
@@ -107,19 +124,6 @@ int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr
 
 	// set extent attributes
 	extent_map[id].attr = a;
-
-	return extent_protocol::OK;
-}
-
-int extent_server::remove(extent_protocol::extentid_t id, int &)
-{
-	// check if extent exists
-	if(extent_map.find(id) == extent_map.end()) {
-		return extent_protocol::NOENT;
-	}
-
-	// delete extent
-	extent_map.erase(id);
 
 	return extent_protocol::OK;
 }

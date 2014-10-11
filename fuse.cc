@@ -324,7 +324,7 @@ fuseserver_mkdir_helper(fuse_ino_t parent, const char *name,
   // because it's a directory we have to put the 32th bit at 0
   dir_inum = dir_inum | 0x7fffffff;
 
-  // try to create file
+  // try to create directory
   yfs_client::status ret = yfs->createfile(parent, dir_inum, name);
   if(ret != yfs_client::OK)
     return ret;
@@ -354,7 +354,7 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
      mode_t mode)
 {
   struct fuse_entry_param e;
-  if( fuseserver_mkdir_helper( parent, name, mode, &e ) == yfs_client::OK ) {
+  if( fuseserver_mkdir_helper(parent, name, mode, &e) == yfs_client::OK ) {
     fuse_reply_entry(req, &e);
   } else {
     fuse_reply_err(req, ENOSYS);
@@ -362,27 +362,14 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
 
 }
 
-
-
 void
 fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
-
-  // You fill this in
-  // Success:	fuse_reply_err(req, 0);
-  // Not found:	fuse_reply_err(req, ENOENT);
-
-  //yfs_client::inum inum = yfs->ilookup(parent, name);
-  yfs_client::status stat = yfs->remove(parent, name);
-  //yfs_client::status stat = yfs->remove(name);
-
-
-  if (stat == yfs_client::IOERR)
-    fuse_reply_err(req, EIO);
-  else if (stat == yfs_client::NOENT)
-    fuse_reply_err(req, ENOENT);
-  else
-    fuse_reply_err(req, 0);
+	yfs_client::status ret = yfs->removefile(parent, name);
+	if(ret == yfs_client::OK)
+		fuse_reply_err(req, 0);
+	else
+		fuse_reply_err(req, ENOENT);
 }
 
 void
