@@ -67,12 +67,15 @@ class yfs_client {
 		int getDirectoryContent(inum, std::list<dirent> &);
 		
 		int createfile(inum, inum, std::string);
-		int removefile(inum, std::string);
+		int removefile(inum, inum, std::string);
 
 		int write(inum, off_t offset, std::string file);
 		int read(inum, off_t offset, size_t len, std::string &file);
 
 		int setfilesize(inum, int);
+
+		lock_protocol::status acquire_lock(lock_protocol::lockid_t);
+		lock_protocol::status release_lock(lock_protocol::lockid_t);
 };
 
 #endif 
