@@ -10,6 +10,7 @@
 #include "rpc.h"
 #include <vector>
 #include <stdio.h>
+#include <unistd.h>
 
 class lock_server {
 

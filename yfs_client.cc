@@ -1,6 +1,7 @@
 // yfs client.  implements FS operations using extent and lock server
 #include "yfs_client.h"
 #include "extent_client.h"
+#include "lock_client.h"
 #include <sstream>
 #include <iostream>
 #include <stdio.h>
@@ -15,18 +16,7 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
 	ec = new extent_client(extent_dst);
-
-	// check for root directory, if it doesn't exist we create it
-	std::string buf;
-	if(ec->get(0x00000001, 0, 0, buf) == extent_protocol::NOENT) {
-		printf("Creating root directory\n");
-		extent_protocol::status ret = ec->put(0x00000001, 0, "", PUT_CREATE);
-
-		if(ret != extent_protocol::OK) {
-			printf("Couldn't create root directory\n");
-			exit(0);
-		}
-	}
+	lc = new lock_client(lock_dst);
 }
 
 yfs_client::inum
@@ -63,10 +53,13 @@ yfs_client::isdir(inum inum)
 int
 yfs_client::ilookup(inum di, std::string name, inum &inum)
 {
+	lc->acquire(di);
+
 	// get directory
 	std::list<yfs_client::dirent> dir_entries;
 	yfs_client::status ret = this->getDirectoryContent(di, dir_entries);
 	if(ret != yfs_client::OK) {
+		lc->release(di);
 		return ret;
 	}
 
@@ -75,9 +68,12 @@ yfs_client::ilookup(inum di, std::string name, inum &inum)
 	for(it = dir_entries.begin(); it != dir_entries.end(); it++) {
 		if((*it).name.compare(name) == 0) {
 			inum = (*it).inum;
+			lc->release(di);
 			return yfs_client::OK;
 		}
 	}
+
+	lc->release(di);
 
 	return yfs_client::NOENT;
 }
@@ -86,7 +82,7 @@ int
 yfs_client::getfile(inum inum, fileinfo &fin)
 {
   int r = OK;
-
+  lc->acquire(inum);
 
   printf("getfile %016llx\n", inum);
   extent_protocol::attr a;
@@ -102,7 +98,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
   printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
  release:
-
+  lc->release(inum);
   return r;
 }
 
@@ -110,7 +106,7 @@ int
 yfs_client::getdir(inum inum, dirinfo &din)
 {
   int r = OK;
-
+  lc->acquire(inum);
 
   printf("getdir %016llx\n", inum);
   extent_protocol::attr a;
@@ -123,15 +119,20 @@ yfs_client::getdir(inum inum, dirinfo &din)
   din.ctime = a.ctime;
 
  release:
+  lc->release(inum);
   return r;
 }
 
 int
 yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 {
+	lc->acquire(inum);
+
 	std::string buf;
-	if (ec->get(inum, 0, 0, buf) != extent_protocol::OK)
+	if (ec->get(inum, 0, 0, buf) != extent_protocol::OK) {
+		lc->release(inum);
 		return IOERR;
+	}
 
 	// directory format: "dircontent" ; "inum" : "filename"
 	std::vector<std::string> tokens = split(buf, ';');
@@ -148,20 +149,31 @@ yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 		entries.push_back(e);
 	}
 
+	lc->release(inum);
+
 	return OK;
 }
 
 int
 yfs_client::createfile(inum parent, inum inum, std::string file_name)
 {
+	lc->acquire(parent);
+	lc->acquire(inum);
+
 	// check if parent exists
 	std::string dir;
-	if(ec->get(parent, 0, 0, dir) != extent_protocol::OK)
+	if(ec->get(parent, 0, 0, dir) != extent_protocol::OK) {
+		lc->release(inum);
+		lc->release(parent);
 		return NOENT;
+	}
 
 	// create file
-	if(ec->put(inum, 0, "", PUT_CREATE) != extent_protocol::OK)
+	if(ec->put(inum, 0, "", PUT_CREATE) != extent_protocol::OK) {
+		lc->release(inum);
+		lc->release(parent);
 		return IOERR;
+	}
 
 	// update parent content
 	if(!dir.empty())
@@ -169,19 +181,31 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 	dir.append(filename(inum) + ":" + file_name);
 
 	// update parent
-	if(ec->put(parent, 0, dir, PUT_UPDATE) != extent_protocol::OK)
+	if(ec->put(parent, 0, dir, PUT_UPDATE) != extent_protocol::OK) {
+		lc->release(inum);
+		lc->release(parent);
 		return IOERR;
+	}
 
 	// update parent times
 	extent_protocol::attr a;
-	if(ec->getattr(parent, a) != extent_protocol::OK)
+	if(ec->getattr(parent, a) != extent_protocol::OK) {
+		lc->release(inum);
+		lc->release(parent);
 		return NOENT;
+	}
 
 	a.mtime = time(NULL);
 	a.ctime = time(NULL);
 
-	if(ec->setattr(parent, a) != extent_protocol::OK)
+	if(ec->setattr(parent, a) != extent_protocol::OK) {
+		lc->release(inum);
+		lc->release(parent);
 		return NOENT;
+	}
+
+	lc->release(inum);
+	lc->release(parent);
 
 	return OK;
 }
@@ -189,10 +213,16 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 int
 yfs_client::removefile(inum parent, std::string name)
 {
+	lc->acquire(parent);
+
 	// check if parent exists
 	std::string dir;
-	if(ec->get(parent, 0, 0, dir) != extent_protocol::OK)
+	if(ec->get(parent, 0, 0, dir) != extent_protocol::OK) {
+		lc->release(parent);
 		return NOENT;
+	}
+
+	lc->release(parent);
 
 	// get file inum
 	yfs_client::inum l_inum;
@@ -216,32 +246,54 @@ yfs_client::removefile(inum parent, std::string name)
 			new_content.append(filename((*it).inum) + ":" + (*it).name);
 		}
 	}
+	
+	lc->acquire(parent);
+	lc->acquire(l_inum);
 
 	// remove file
-	if (ec->remove(l_inum) != extent_protocol::OK)
+	if (ec->remove(l_inum) != extent_protocol::OK) {
+		lc->release(l_inum);
+		lc->release(parent);
 		return IOERR;
+	}
 
 	// update parent content
-	if(ec->put(parent, -1, new_content, PUT_UPDATE) != extent_protocol::OK)
+	if(ec->put(parent, -1, new_content, PUT_UPDATE) != extent_protocol::OK) {
+		lc->release(l_inum);
+		lc->release(parent);
 		return IOERR;
+	}
+
+	lc->release(l_inum);
+	lc->release(parent);
 
 	return OK;
 }
 
 int
 yfs_client::write(inum inum, off_t offset, std::string file) {
-	
-	if(ec->put(inum, offset, file, PUT_UPDATE) != extent_protocol::OK)
+	lc->acquire(inum);	
+
+	if(ec->put(inum, offset, file, PUT_UPDATE) != extent_protocol::OK) {
+		lc->release(inum);
 		return IOERR;
+	}
+
+	lc->release(inum);
 
 	return OK;
 }
 
 int
 yfs_client::read(inum inum, off_t offset, size_t len, std::string &file) {
+	lc->acquire(inum);
 
-	if(ec->get(inum, offset, len, file) != extent_protocol::OK)
+	if(ec->get(inum, offset, len, file) != extent_protocol::OK) {
+		lc->release(inum);
 		return IOERR;
+	}
+
+	lc->release(inum);
 
 	return OK;
 }
@@ -249,18 +301,26 @@ yfs_client::read(inum inum, off_t offset, size_t len, std::string &file) {
 int
 yfs_client::setfilesize(inum inum, int size)
 {
+	lc->acquire(inum);
+
 	// get current file size
 	extent_protocol::attr attr;
 	
 	// read file attributes
-    if(ec->getattr(inum, attr) != extent_protocol::OK)
+    if(ec->getattr(inum, attr) != extent_protocol::OK) {
+		lc->release(inum);
         return NOENT;
+	}
 
 	attr.size = size;
 
 	// rewrite file attributes
-	if(ec->setattr(inum, attr) != extent_protocol::OK)
+	if(ec->setattr(inum, attr) != extent_protocol::OK) {
+		lc->release(inum);
 		return NOENT;
+	}
+
+	lc->release(inum);
 
 	return OK;
 }

@@ -8,7 +8,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-extent_server::extent_server() {}
+extent_server::extent_server() {
+	printf("Creating root directory\n");
+	int r;
+	if(put(0x00000001, 0, "", false, r) != extent_protocol::OK) {
+		printf("Couldn't create root directory\n");
+		exit(0);
+	}
+}
 
 
 int extent_server::put(extent_protocol::extentid_t id, int offset, std::string file, int update, int &r)
