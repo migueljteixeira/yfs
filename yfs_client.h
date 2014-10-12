@@ -6,6 +6,9 @@
 #include "extent_client.h"
 #include <list>
 
+#define PUT_CREATE 0
+#define PUT_UPDATE 1
+
 class yfs_client {
 	extent_client *ec;
 

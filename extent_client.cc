@@ -28,11 +28,11 @@ extent_client::get(extent_protocol::extentid_t eid, unsigned int offset, unsigne
 }
 
 extent_protocol::status
-extent_client::put(extent_protocol::extentid_t eid, int offset, std::string buf)
+extent_client::put(extent_protocol::extentid_t eid, int offset, std::string buf, int update)
 {
 	extent_protocol::status ret = extent_protocol::OK;
 	int r;
-	ret = cl->call(extent_protocol::put, eid, offset, buf, r);
+	ret = cl->call(extent_protocol::put, eid, offset, buf, update, r);
 	return ret;
 }
 

@@ -20,7 +20,7 @@ class extent_server {
 	public:
 		extent_server();
 
-		int put(extent_protocol::extentid_t id, int, std::string, int &);
+		int put(extent_protocol::extentid_t id, int, std::string, int update, int &);
 		int remove(extent_protocol::extentid_t id, int &);
 		int get(extent_protocol::extentid_t id, unsigned int, unsigned int, std::string &file);
 		int getattr(extent_protocol::extentid_t id, extent_protocol::attr &);

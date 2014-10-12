@@ -20,7 +20,7 @@ yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 	std::string buf;
 	if(ec->get(0x00000001, 0, 0, buf) == extent_protocol::NOENT) {
 		printf("Creating root directory\n");
-		extent_protocol::status ret = ec->put(0x00000001, 0, "");
+		extent_protocol::status ret = ec->put(0x00000001, 0, "", PUT_CREATE);
 
 		if(ret != extent_protocol::OK) {
 			printf("Couldn't create root directory\n");
@@ -160,7 +160,7 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 		return NOENT;
 
 	// create file
-	if(ec->put(inum, 0, "") != extent_protocol::OK)
+	if(ec->put(inum, 0, "", PUT_CREATE) != extent_protocol::OK)
 		return IOERR;
 
 	// update parent content
@@ -169,8 +169,19 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 	dir.append(filename(inum) + ":" + file_name);
 
 	// update parent
-	if(ec->put(parent, 0, dir) != extent_protocol::OK)
+	if(ec->put(parent, 0, dir, PUT_UPDATE) != extent_protocol::OK)
 		return IOERR;
+
+	// update parent times
+	extent_protocol::attr a;
+	if(ec->getattr(parent, a) != extent_protocol::OK)
+		return NOENT;
+
+	a.mtime = time(NULL);
+	a.ctime = time(NULL);
+
+	if(ec->setattr(parent, a) != extent_protocol::OK)
+		return NOENT;
 
 	return OK;
 }
@@ -199,8 +210,11 @@ yfs_client::removefile(inum parent, std::string name)
 	std::string new_content;
 	std::list<yfs_client::dirent>::iterator it;
 	for(it = dir_entries.begin(); it != dir_entries.end(); it++) {
-		if((*it).name.compare(name) != 0)
+		if((*it).name.compare(name) != 0) {
+			if(!new_content.empty())
+				new_content.append(";");
 			new_content.append(filename((*it).inum) + ":" + (*it).name);
+		}
 	}
 
 	// remove file
@@ -208,7 +222,7 @@ yfs_client::removefile(inum parent, std::string name)
 		return IOERR;
 
 	// update parent content
-	if(ec->put(parent, -1, new_content) != extent_protocol::OK)
+	if(ec->put(parent, -1, new_content, PUT_UPDATE) != extent_protocol::OK)
 		return IOERR;
 
 	return OK;
@@ -217,7 +231,7 @@ yfs_client::removefile(inum parent, std::string name)
 int
 yfs_client::write(inum inum, off_t offset, std::string file) {
 	
-	if(ec->put(inum, offset, file) != extent_protocol::OK)
+	if(ec->put(inum, offset, file, PUT_UPDATE) != extent_protocol::OK)
 		return IOERR;
 
 	return OK;

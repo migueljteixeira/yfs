@@ -11,7 +11,7 @@
 extent_server::extent_server() {}
 
 
-int extent_server::put(extent_protocol::extentid_t id, int offset, std::string file, int &r)
+int extent_server::put(extent_protocol::extentid_t id, int offset, std::string file, int update, int &r)
 {
 	extent_t ex;
 	
@@ -24,7 +24,7 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 		ex.buf = file;
 
 	// if the offset is bigger than the string itself, we need to resize it
-	else if(offset >= ex.buf.size()) {
+	else if((unsigned)offset >= ex.buf.size()) {
 		std::string str = std::string(offset + file.size(), '\0');
         str.replace(0, ex.buf.size(), ex.buf);
 		str.replace(offset, file.size(), file);
@@ -35,7 +35,7 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 
 	// initialize extent
 	ex.attr.size = ex.buf.size();
-	ex.attr.atime = time(NULL);
+	if(!update) ex.attr.atime = time(NULL);
 	ex.attr.mtime = time(NULL);
 	ex.attr.ctime = time(NULL);
 
@@ -124,6 +124,9 @@ int extent_server::setattr(extent_protocol::extentid_t id, extent_protocol::attr
 
 	// set extent attributes
 	extent_map[id].attr = a;
+
+	// update mtime
+	extent_map[id].attr.mtime = time(NULL);
 
 	return extent_protocol::OK;
 }
