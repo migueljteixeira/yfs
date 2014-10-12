@@ -9,6 +9,7 @@
 #include <getopt.h>
 #include "jsl_log.h"
 #include "gettime.h"
+#include <unistd.h>
 
 #define NUM_CL 2
 

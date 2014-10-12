@@ -53,15 +53,13 @@ yfs_client::isdir(inum inum)
 int
 yfs_client::ilookup(inum di, std::string name, inum &inum)
 {
-	lc->acquire(di);
-
 	// get directory
 	std::list<yfs_client::dirent> dir_entries;
 	yfs_client::status ret = this->getDirectoryContent(di, dir_entries);
-	if(ret != yfs_client::OK) {
-		lc->release(di);
+	if(ret != yfs_client::OK)
 		return ret;
-	}
+
+	lc->acquire(di);
 
 	// search for file in directory
 	std::list<yfs_client::dirent>::iterator it;
