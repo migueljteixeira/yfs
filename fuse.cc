@@ -162,6 +162,14 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 
 	yfs->acquire_lock(file_inum);
 
+	// if file exists we get the existing inum
+	yfs_client::inum s_inum;
+	if(yfs->ilookup(parent, name, s_inum) == yfs_client::OK) {
+		yfs->release_lock(file_inum);
+		file_inum = s_inum;
+		yfs->acquire_lock(file_inum);
+	}
+
 	// try to create file
 	yfs_client::status ret = yfs->createfile(parent, file_inum, name);
 	if(ret != yfs_client::OK) {

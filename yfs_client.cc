@@ -79,6 +79,7 @@ yfs_client::getfile(inum inum, fileinfo &fin)
   printf("getfile %016llx\n", inum);
   extent_protocol::attr a;
   if (ec->getattr(inum, a) != extent_protocol::OK) {
+	std::cout << "aqui1" << std::endl;
     r = IOERR;
     goto release;
   }
