@@ -387,42 +387,42 @@ yfs_client::status
 fuseserver_mkdir_helper(fuse_ino_t parent, const char *name,
      mode_t mode, struct fuse_entry_param *e)
 {
-  // generate file random inum
-  yfs_client::inum dir_inum = random();
+	// generate dir random inum
+	yfs_client::inum dir_inum = random();
 
-  // because it's a directory we have to put the 32th bit at 0
-  dir_inum = dir_inum | 0x7fffffff;
+	// because it's a dir we have to put the 32th bit at 0
+	dir_inum = dir_inum & 0x7fffffff;
 
-  yfs->acquire_lock(dir_inum);
+	yfs->acquire_lock(dir_inum);
 
-  // try to create directory
-  yfs_client::status ret = yfs->createfile(parent, dir_inum, name);
-  if(ret != yfs_client::OK) {
+	// try to create directory
+	yfs_client::status ret = yfs->createfile(parent, dir_inum, name);
+	if(ret != yfs_client::OK) {
+		yfs->release_lock(dir_inum);
+		return ret;
+	}
+
+	// update fuse entry
+	yfs_client::dirinfo info;
+	ret = yfs->getdir(dir_inum, info);
+	if(ret != yfs_client::OK) {
+		yfs->release_lock(dir_inum);
+		return ret;
+	}
+
+	e->ino = dir_inum;
+	e->generation = 1;
+	e->attr.st_mode = S_IFDIR | 0777;
+	e->attr.st_nlink = 2;
+	e->attr.st_atime = info.atime;
+	e->attr.st_mtime = info.mtime;
+	e->attr.st_ctime = info.ctime;
+	e->entry_timeout = 0.0;
+	e->attr_timeout = 0.0;
+
 	yfs->release_lock(dir_inum);
-    return ret;
-  }
 
-  // update fuse entry
-  yfs_client::dirinfo info;
-  ret = yfs->getdir(dir_inum, info);
-  if(ret != yfs_client::OK) {
-	yfs->release_lock(dir_inum);
-    return ret;
-  }
-
-  e->ino = dir_inum;
-  e->generation = 1;
-  e->attr.st_mode = S_IFDIR | 0777;
-  e->attr.st_nlink = 2;
-  e->attr.st_atime = info.atime;
-  e->attr.st_mtime = info.mtime;
-  e->attr.st_ctime = info.ctime;
-  e->entry_timeout = 0.0;
-  e->attr_timeout = 0.0;
-
-  yfs->release_lock(dir_inum);
-
-  return yfs_client::OK;
+	return yfs_client::OK;
 
 }
 

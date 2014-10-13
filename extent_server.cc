@@ -23,10 +23,11 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 	extent_t ex;
 	
 	// check if the element already exists
-	if(extent_map.count(id) > 0)
+	if(extent_map.count(id) > 0 && update)
 		ex = extent_map[id];
-
-	std::cout << "extent_server file: " << file << ", offset: " << offset << std::endl;
+	// element exists but we are trying to create it again
+	else if(extent_map.count(id) > 0 && !update)
+		return extent_protocol::IOERR;	
 
 	// if the offset is negative we will replace all content
 	if(offset < 0)
