@@ -141,6 +141,8 @@ yfs_client::getDirectoryContent(inum inum, std::list<dirent> &entries)
 int
 yfs_client::createfile(inum parent, inum inum, std::string file_name)
 {
+	//std::cout << "CREATE FILE name: " << file_name << ", inum: " << inum << ", parent: " << parent << std::endl;
+
 	// check if parent exists
 	std::string dir;
 	if(ec->get(parent, 0, 0, dir) != extent_protocol::OK)
@@ -154,10 +156,14 @@ yfs_client::createfile(inum parent, inum inum, std::string file_name)
 	if(ec->put(inum, 0, "", PUT_CREATE) != extent_protocol::OK)
 		return IOERR;
 
+	std::cout << "CREATE FILE name: " << file_name << ", inum: " << inum << ", parent: " << parent << ", dir: " << dir << std::endl;
+
 	// update parent content
 	if(!dir.empty())
 		dir.append(";");
 	dir.append(filename(inum) + ":" + file_name);
+
+	std::cout << "CREATE FILE name: " << file_name << ", inum: " << inum << ", parent: " << parent << ", dir: " << dir << std::endl;
 
 	// update parent
 	if(ec->put(parent, 0, dir, PUT_UPDATE) != extent_protocol::OK)

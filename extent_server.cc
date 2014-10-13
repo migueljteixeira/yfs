@@ -26,6 +26,8 @@ int extent_server::put(extent_protocol::extentid_t id, int offset, std::string f
 	if(extent_map.count(id) > 0)
 		ex = extent_map[id];
 
+	std::cout << "extent_server file: " << file << ", offset: " << offset << std::endl;
+
 	// if the offset is negative we will replace all content
 	if(offset < 0)
 		ex.buf = file;

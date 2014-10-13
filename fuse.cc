@@ -152,8 +152,6 @@ yfs_client::status
 fuseserver_createhelper(fuse_ino_t parent, const char *name,
      mode_t mode, struct fuse_entry_param *e)
 {
-	yfs->acquire_lock(parent);
-
 	// generate file random inum
 	yfs_client::inum file_inum = random();
 
@@ -174,7 +172,6 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 	yfs_client::status ret = yfs->createfile(parent, file_inum, name);
 	if(ret != yfs_client::OK) {
 		yfs->release_lock(file_inum);
-		yfs->release_lock(parent);
 		return ret;
 	}
 
@@ -183,7 +180,6 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 	ret = yfs->getfile(file_inum, info);
 	if(ret != yfs_client::OK) {
 		yfs->release_lock(file_inum);
-		yfs->release_lock(parent);
 		return ret;
 	}
 
@@ -199,7 +195,6 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
 	e->attr_timeout = 0.0;
 
 	yfs->release_lock(file_inum);
-	yfs->release_lock(parent);
 
 	return yfs_client::OK;
 }
@@ -208,22 +203,31 @@ void
 fuseserver_create(fuse_req_t req, fuse_ino_t parent, const char *name,
    mode_t mode, struct fuse_file_info *fi)
 {
-  struct fuse_entry_param e;
-  if( fuseserver_createhelper( parent, name, mode, &e ) == yfs_client::OK ) {
-    fuse_reply_create(req, &e, fi);
-  } else {
-    fuse_reply_err(req, ENOENT);
-  }
+	yfs->acquire_lock(parent);
+	
+	struct fuse_entry_param e;
+	if( fuseserver_createhelper( parent, name, mode, &e ) == yfs_client::OK ) {
+		fuse_reply_create(req, &e, fi);
+	} else {
+		fuse_reply_err(req, ENOENT);
+	}
+
+	yfs->release_lock(parent);
 }
 
 void fuseserver_mknod( fuse_req_t req, fuse_ino_t parent, 
-    const char *name, mode_t mode, dev_t rdev ) {
-  struct fuse_entry_param e;
-  if( fuseserver_createhelper( parent, name, mode, &e ) == yfs_client::OK ) {
-    fuse_reply_entry(req, &e);
-  } else {
-    fuse_reply_err(req, ENOENT);
-  }
+    const char *name, mode_t mode, dev_t rdev )
+{
+	yfs->acquire_lock(parent);
+
+	struct fuse_entry_param e;
+	if( fuseserver_createhelper( parent, name, mode, &e ) == yfs_client::OK ) {
+		fuse_reply_entry(req, &e);
+	} else {
+		fuse_reply_err(req, ENOENT);
+	}
+
+	yfs->release_lock(parent);
 }
 
 void
@@ -234,13 +238,14 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	e.attr_timeout = 0.0;
 	e.entry_timeout = 0.0;
 
+	yfs->acquire_lock(parent);
+
 	// check if parent is a directory
 	if(!yfs->isdir(parent)) {
+		yfs->release_lock(parent);
 		fuse_reply_err(req, ENOTDIR);
 		return;
 	}
-
-	yfs->acquire_lock(parent);
 
 	// lookup for inum of 'name'
 	yfs_client::inum l_inum;
@@ -261,8 +266,11 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	if(yfs->isfile(l_inum)) {
 		yfs_client::fileinfo info;
 		ret = yfs->getfile(l_inum, info);
-		if(ret != yfs_client::OK)
+		if(ret != yfs_client::OK) {
+			yfs->release_lock(l_inum);
 			fuse_reply_err(req, EIO);
+			return;
+		}
 
 		e.attr.st_mode = S_IFREG | 0666;
 		e.attr.st_nlink = 1;
@@ -274,8 +282,11 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	else {
 		yfs_client::dirinfo info;
 		ret = yfs->getdir(l_inum, info);
-		if(ret != yfs_client::OK)
+		if(ret != yfs_client::OK) {
+			yfs->release_lock(l_inum);
 			fuse_reply_err(req, EIO);
+			return;
+		}
 
 		e.attr.st_mode = S_IFDIR | 0777;
 		e.attr.st_nlink = 2;
@@ -325,7 +336,10 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 	struct dirbuf b;
 	yfs_client::dirent e;
 
+	yfs->acquire_lock(inum);
+
 	if(!yfs->isdir(inum)){
+		yfs->release_lock(inum);
 		fuse_reply_err(req, ENOTDIR);
 		return;
 	}
@@ -334,12 +348,8 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
 	std::list<yfs_client::dirent> entries;
 
-	yfs->acquire_lock(inum);
-
 	// get listing for the dir
 	yfs->getDirectoryContent(inum, entries);
-
-	yfs->release_lock(inum);
 
 	// add information about the files to the buffer
 	for (std::list<yfs_client::dirent>::const_iterator it =
@@ -347,6 +357,8 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
 
 		dirbuf_add(&b, it->name.c_str(), static_cast<fuse_ino_t>(it->inum));
 	}
+
+	yfs->release_lock(inum);
 
 	reply_buf_limited(req, b.p, b.size, off, size);
 	free(b.p);
@@ -357,10 +369,14 @@ void
 fuseserver_open(fuse_req_t req, fuse_ino_t ino,
      struct fuse_file_info *fi)
 {
+	yfs->acquire_lock(ino);
+
 	// check if is a directory
 	if(yfs->isdir(ino)) {
 		fuse_reply_err(req, EISDIR);
 	}
+
+	yfs->release_lock(ino);
 
   	fuse_reply_open(req, fi);
 }
@@ -371,8 +387,6 @@ yfs_client::status
 fuseserver_mkdir_helper(fuse_ino_t parent, const char *name,
      mode_t mode, struct fuse_entry_param *e)
 {
-  yfs->acquire_lock(parent);
-
   // generate file random inum
   yfs_client::inum dir_inum = random();
 
@@ -385,7 +399,6 @@ fuseserver_mkdir_helper(fuse_ino_t parent, const char *name,
   yfs_client::status ret = yfs->createfile(parent, dir_inum, name);
   if(ret != yfs_client::OK) {
 	yfs->release_lock(dir_inum);
-    yfs->release_lock(parent);
     return ret;
   }
 
@@ -394,7 +407,6 @@ fuseserver_mkdir_helper(fuse_ino_t parent, const char *name,
   ret = yfs->getdir(dir_inum, info);
   if(ret != yfs_client::OK) {
 	yfs->release_lock(dir_inum);
-    yfs->release_lock(parent);
     return ret;
   }
 
@@ -409,7 +421,6 @@ fuseserver_mkdir_helper(fuse_ino_t parent, const char *name,
   e->attr_timeout = 0.0;
 
   yfs->release_lock(dir_inum);
-  yfs->release_lock(parent);
 
   return yfs_client::OK;
 
@@ -419,6 +430,8 @@ void
 fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
      mode_t mode)
 {
+  yfs->acquire_lock(parent);
+
   struct fuse_entry_param e;
   if( fuseserver_mkdir_helper(parent, name, mode, &e) == yfs_client::OK ) {
     fuse_reply_entry(req, &e);
@@ -426,6 +439,7 @@ fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
     fuse_reply_err(req, ENOENT);
   }
 
+  yfs->release_lock(parent);
 }
 
 void
