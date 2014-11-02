@@ -89,7 +89,6 @@ bool
 proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 {
 	std::vector<std::string> accepts;
-	std::vector<std::string> nodes;
 	std::vector<std::string> nodes1;
 	std::string v;
 	bool r = false;
@@ -102,13 +101,15 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 		pthread_mutex_unlock(&pxs_mutex);
 		return false;
 	}
+	
+	stable = false;
+	c_nodes = newnodes;
+	c_v = newv;
 
 	setn();
 	accepts.clear();
-	nodes.clear();
 	v.clear();
-	nodes = c_nodes;
-	if (prepare(instance, accepts, nodes, v)) {
+	if (prepare(instance, accepts, c_nodes, v)) {
 
 		if (majority(c_nodes, accepts)) {
 			printf("paxos::manager: received a majority of prepare responses\n");
@@ -152,7 +153,11 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
          std::vector<std::string> nodes,
          std::string &v)
 {
-	// set maximum id to the minimum (to be updated in the following loop with larger id)
+	// sets the last proposal
+	setn();
+    my_n.m = me;
+
+	// set id to the minimum (to be updated in the following loop with larger id)
     prop_t highest_n_a = {0, std::string()};
 
 	// send prepare RPCs to nodes and collect responses
@@ -289,8 +294,6 @@ paxos_protocol::status
 acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
     paxos_protocol::prepareres &r)
 {
-	pthread_mutex_lock(&pxs_mutex);
-
 	if(a.instance <= instance_h) {
 		r.oldinstance = 1; // true
 		r.accept = 0; // false
@@ -313,16 +316,12 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 		r.accept = 0; // false
 	}
 
-	pthread_mutex_unlock(&pxs_mutex);
-
 	return paxos_protocol::OK;
 }
 
 paxos_protocol::status
 acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 {
-	pthread_mutex_lock(&pxs_mutex);
-
 	if(a.n >= n_h) {
 		n_a = a.n;
 		v_a = a.v;
@@ -334,8 +333,6 @@ acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 	else {
 		r = 0; // false
 	}
-
-	pthread_mutex_unlock(&pxs_mutex);
 
 	return paxos_protocol::OK;
 }
