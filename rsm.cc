@@ -228,10 +228,11 @@ void
 rsm::commit_change() 
 {
 	pthread_mutex_lock(&rsm_mutex);
-	// Lab 7:
-	// - If I am not part of the new view, start recovery
 
-	
+	// if i am not part of the new view, start recovery
+	std::string me = cfg->myaddr();
+	if(cfg->ismember(me))
+		breakpoint2();
 
 	pthread_mutex_unlock(&rsm_mutex);
 }
@@ -296,22 +297,32 @@ rsm::transferdonereq(std::string m, int &r)
 rsm_protocol::status
 rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 {
-  int ret = rsm_client_protocol::OK;
+	int ret = rsm_client_protocol::OK;
 
-  assert (pthread_mutex_lock(&rsm_mutex) == 0);
-  printf("joinreq: src %s last (%d,%d) mylast (%d,%d)\n", m.c_str(), 
-	 last.vid, last.seqno, last_myvs.vid, last_myvs.seqno);
-  if (cfg->ismember(m)) {
-    printf("joinreq: is still a member\n");
-    r.log = cfg->dump();
-  } else if (cfg->myaddr() != primary) {
-    printf("joinreq: busy\n");
-    ret = rsm_client_protocol::BUSY;
-  } else {
-    // Lab 7: invoke config to create a new view that contains m
-  }
-  assert (pthread_mutex_unlock(&rsm_mutex) == 0);
-  return ret;
+	assert (pthread_mutex_lock(&rsm_mutex) == 0);
+	printf("joinreq: src %s last (%d,%d) mylast (%d,%d)\n", m.c_str(), 
+	last.vid, last.seqno, last_myvs.vid, last_myvs.seqno);
+	
+	if (cfg->ismember(m)) {
+		printf("joinreq: is still a member\n");
+		r.log = cfg->dump();
+	} else if (cfg->myaddr() != primary) {
+		printf("joinreq: busy\n");
+		ret = rsm_client_protocol::BUSY;
+	} else {
+		// create a new view that contains m
+		cfg->add(m);
+
+		if(cfg->ismember(m)) {
+			r.log = cfg->dump();
+		}
+		else {
+			ret = rsm_protocol::BUSY;
+		}
+	}
+	
+	assert (pthread_mutex_unlock(&rsm_mutex) == 0);
+	return ret;
 }
 
 /*

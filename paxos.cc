@@ -172,26 +172,28 @@ acceptor::acceptor(class paxos_change *_cfg, bool _first, std::string _me,
 	     std::string _value)
   : cfg(_cfg), me (_me), instance_h(0)
 {
-  assert (pthread_mutex_init(&pxs_mutex, NULL) == 0);
+	assert (pthread_mutex_init(&pxs_mutex, NULL) == 0);
 
-  n_h.n = 0;
-  n_h.m = me;
-  n_a.n = 0;
-  n_a.m = me;
-  v_a.clear();
+	n_h.n = 0;
+	n_h.m = me;
+	n_a.n = 0;
+	n_a.m = me;
+	v_a.clear();
 
-  l = new log (this, me);
+	l = new log (this, me);
 
-  if (instance_h == 0 && _first) {
-    values[1] = _value;
-    l->loginstance(1, _value);
-    instance_h = 1;
-  }
+	if (instance_h == 0 && _first) {
+		values[1] = _value;
 
-  pxs = new rpcs(atoi(_me.c_str()));
-  pxs->reg(paxos_protocol::preparereq, this, &acceptor::preparereq);
-  pxs->reg(paxos_protocol::acceptreq, this, &acceptor::acceptreq);
-  pxs->reg(paxos_protocol::decidereq, this, &acceptor::decidereq);
+		// logs view 1 to disk
+		l->loginstance(1, _value);
+		instance_h = 1;
+	}
+
+	pxs = new rpcs(atoi(_me.c_str()));
+	pxs->reg(paxos_protocol::preparereq, this, &acceptor::preparereq);
+	pxs->reg(paxos_protocol::acceptreq, this, &acceptor::acceptreq);
+	pxs->reg(paxos_protocol::decidereq, this, &acceptor::decidereq);
 }
 
 paxos_protocol::status
