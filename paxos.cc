@@ -102,10 +102,6 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 		return false;
 	}
 
-	// sets the last proposal
-	setn();
-    my_n.m = me;
-
 	accepts.clear();
 	v.clear();
 	
@@ -157,6 +153,10 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
          std::vector<std::string> nodes,
          std::string &v)
 {
+	// sets the last proposal
+	setn();
+	my_n.m = me;
+
 	// set id to the minimum (to be updated in the following loop with larger id)
     prop_t highest_n_a = {0, std::string()};
 
@@ -174,8 +174,10 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
             arg.n = my_n;
 
 			int ret = cl->call(paxos_protocol::preparereq, me, arg, res, rpcc::to(1000));
-			if(ret != paxos_protocol::OK)
+			if(ret != paxos_protocol::OK) {
 				printf("proposer::prepare failed\n");
+				continue;
+			}
 				
 			// if one of the nodes replies with an oldinstance, return false
 			if(res.oldinstance) {
@@ -225,8 +227,10 @@ proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 			arg.v = v;
 
 			int ret = cl->call(paxos_protocol::acceptreq, me, arg, res, rpcc::to(1000));
-			if(ret != paxos_protocol::OK)
+			if(ret != paxos_protocol::OK) {
 				printf("proposer::accept failed\n");
+				continue;
+			}
 
 			if(res) {
 				// this node has accepted, added it to the list

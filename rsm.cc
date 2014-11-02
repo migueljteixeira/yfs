@@ -227,12 +227,12 @@ rsm::join(std::string m) {
 void 
 rsm::commit_change() 
 {
-	pthread_mutex_lock(&rsm_mutex);
+	//pthread_mutex_lock(&rsm_mutex);
 
 	// sets the primary for the new view
 	set_primary();
 
-	pthread_mutex_unlock(&rsm_mutex);
+	//pthread_mutex_unlock(&rsm_mutex);
 	
 	// since its a view change, we have to run the recovery thread
 	pthread_cond_signal(&recovery_cond);
