@@ -206,7 +206,7 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 		r.oldinstance = 1; // true
 		r.accept = 0; // false
 		r.n_a = n_a;
-		r.v_a = values[a.instance];
+		r.v_a = values[instance_h];
 	}
 	else if(a.n > n_h) {
 		n_h = a.n;
@@ -216,8 +216,8 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 		r.n_a = n_a;
 		r.v_a = v_a;
 
-		// log prepare
-		l->logprop(n_a, v_a);
+		// its a bigger proposal than we've seen
+		l->loghigh(n_h);
 	}
 	else {
 		r.oldinstance = 0; // false
@@ -239,8 +239,8 @@ acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 		v_a = a.v;
 		r = 1; // true
 
-		// log accept (?)
-		//l->logaccept(n_a, v_a);
+		// accept the proposal
+		l->logprop(n_a, v_a);
 	}
 	else {
 		r = 0; // false
@@ -254,13 +254,9 @@ acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 paxos_protocol::status
 acceptor::decidereq(std::string src, paxos_protocol::decidearg a, int &r)
 {
-	pthread_mutex_lock(&pxs_mutex);
-
-	if (a.instance == instance_h + 1) {
-		commit_wo(a.instance, v_a);
+	if (a.instance > instance_h) {
+		commit(a.instance, a.v);
 	}
-
-	pthread_mutex_unlock(&pxs_mutex);
 
 	return paxos_protocol::OK;
 }
