@@ -101,14 +101,18 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 		pthread_mutex_unlock(&pxs_mutex);
 		return false;
 	}
+
+	// sets the last proposal
+	setn();
+    my_n.m = me;
+
+	accepts.clear();
+	v.clear();
 	
 	stable = false;
 	c_nodes = newnodes;
 	c_v = newv;
 
-	setn();
-	accepts.clear();
-	v.clear();
 	if (prepare(instance, accepts, c_nodes, v)) {
 
 		if (majority(c_nodes, accepts)) {
@@ -153,10 +157,6 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
          std::vector<std::string> nodes,
          std::string &v)
 {
-	// sets the last proposal
-	setn();
-    my_n.m = me;
-
 	// set id to the minimum (to be updated in the following loop with larger id)
     prop_t highest_n_a = {0, std::string()};
 
