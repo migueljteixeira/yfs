@@ -229,12 +229,13 @@ rsm::commit_change()
 {
 	pthread_mutex_lock(&rsm_mutex);
 
-	// if i am not part of the new view, start recovery
-	std::string me = cfg->myaddr();
-	if(cfg->ismember(me))
-		breakpoint2();
+	// sets the primary for the new view
+	set_primary();
 
 	pthread_mutex_unlock(&rsm_mutex);
+	
+	// since its a view change, we have to run the recovery thread
+	pthread_cond_signal(&recovery_cond);
 }
 
 
@@ -317,7 +318,7 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 			r.log = cfg->dump();
 		}
 		else {
-			ret = rsm_protocol::BUSY;
+			ret = rsm_protocol::ERR;
 		}
 	}
 	
