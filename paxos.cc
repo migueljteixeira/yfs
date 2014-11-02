@@ -152,7 +152,52 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
          std::vector<std::string> nodes,
          std::string &v)
 {
-  return false;
+	// set maximum id to the minimum (to be updated in the following loop with larger id)
+    prop_t highest_n_a = {0, std::string()};
+
+	// send prepare RPCs to nodes and collect responses
+	for (unsigned i = 0; i < nodes.size(); i++) {
+
+		handle m(nodes[i]);
+		rpcc *cl = m.get_rpcc();
+
+		if(cl) {
+			paxos_protocol::prepareres res;
+            paxos_protocol::preparearg arg;
+
+            arg.instance = instance;
+            arg.n = my_n;
+
+			int ret = cl->call(paxos_protocol::preparereq, me, arg, res, rpcc::to(1000));
+			if(ret != paxos_protocol::OK)
+				printf("proposer::prepare failed\n");
+				
+			// if one of the nodes replies with an oldinstance, return false
+			if(res.oldinstance) {
+				acc->commit(instance, res.v_a);
+                stable = true;
+
+                return false;
+			}
+
+			// fill in accepts with set of nodes that accepted,
+			// set v to the v_a with the highest n_a, and return true
+			else if(res.accept) {
+
+				// add node to the list
+                accepts.push_back(nodes[i]);
+
+				if(res.n_a > highest_n_a) {
+					v = res.v_a;
+					highest_n_a = res.n_a;
+				}
+			}
+
+			else return false;
+		}
+	}
+
+	return true;
 }
 
 
@@ -160,12 +205,56 @@ void
 proposer::accept(unsigned instance, std::vector<std::string> &accepts,
         std::vector<std::string> nodes, std::string v)
 {
+	// send accept RPCs to nodes and collect nodes that accepted
+	for (unsigned i = 0; i < nodes.size(); i++) {
+
+		handle m(nodes[i]);
+		rpcc *cl = m.get_rpcc();
+
+		if(cl) {
+			int res;
+            paxos_protocol::acceptarg arg;
+
+            arg.instance = instance;
+            arg.n = my_n;
+			arg.v = v;
+
+			int ret = cl->call(paxos_protocol::acceptreq, me, arg, res, rpcc::to(1000));
+			if(ret != paxos_protocol::OK)
+				printf("proposer::accept failed\n");
+
+			if(res) {
+				// this node has accepted, added it to the list
+                accepts.push_back(nodes[i]);
+			}
+			else
+				printf("proposer::accept rejected\n");
+		}
+	}
 }
 
 void
-proposer::decide(unsigned instance, std::vector<std::string> accepts, 
+proposer::decide(unsigned instance, std::vector<std::string> nodes, 
 	      std::string v)
 {
+	// send decide RPCs to the nodes that have already accepted
+	for (unsigned i = 0; i < nodes.size(); i++) {
+
+		handle m(nodes[i]);
+		rpcc *cl = m.get_rpcc();
+
+		if(cl) {
+			int res;
+			paxos_protocol::decidearg arg;
+
+		    arg.instance = instance;
+		    arg.v = v;
+
+			cl->call(paxos_protocol::decidereq, me, arg, res, rpcc::to(1000));
+		}
+		else
+			printf("proposer::decide rejected\n");
+	}
 }
 
 acceptor::acceptor(class paxos_change *_cfg, bool _first, std::string _me, 
