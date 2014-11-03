@@ -111,8 +111,8 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 	c_nodes = newnodes; // set current nodes known by me
 	c_v = newv; // set new value we would like to propose
 
-	accepts.clear();
-	v.clear();
+	//accepts.clear();
+	//v.clear();
 	if (prepare(instance, accepts, c_nodes, v)) {
 
 		if (majority(c_nodes, accepts)) {
@@ -168,45 +168,49 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
 		handle m(nodes[i]);
 		rpcc *cl = m.get_rpcc();
 
-		if(cl) {
-			paxos_protocol::preparearg arg;
-			paxos_protocol::prepareres res;
-
-			// sets prepare arguments
-			arg.instance = instance;
-			arg.n = my_n;
-
-			int ret = cl->call(paxos_protocol::preparereq, me, arg, res, rpcc::to(1000));
-			if(ret != paxos_protocol::OK) {
-				printf("proposer::prepare: failed\n");
-				continue;
-			}
-				
-			// if one of the nodes replies with an oldinstance it means
-			// this propose is old so we'll update this node with the value
-			// for the proposed instance
-			if(res.oldinstance) {
-				acc->commit(instance, res.v_a);
-                stable = true;
-
-                return false;
-			}
-
-			// fill in accepts with set of nodes that accepted the proposal,
-			// set v to the v_a with the highest n_a, and return true
-			else if(res.accept) {
-
-				// add node to the list
-                accepts.push_back(nodes[i]);
-
-				if(res.n_a > highest_n_a) {
-					v = res.v_a;
-					highest_n_a = res.n_a;
-				}
-			}
-
-			else return false;
+		// something went wrong
+		if(!cl) {
+			printf("proposer::prepare: rejected\n");
+			continue;
 		}
+			
+		paxos_protocol::preparearg arg;
+		paxos_protocol::prepareres res;
+
+		// sets prepare arguments
+		arg.instance = instance;
+		arg.n = my_n; // the current proposal
+
+		int ret = cl->call(paxos_protocol::preparereq, me, arg, res, rpcc::to(1000));
+		if(ret != paxos_protocol::OK) {
+			printf("proposer::prepare: failed\n");
+			continue;
+		}
+			
+		// if one of the nodes replies with an oldinstance it means
+		// this propose is old so we'll update this node with the value
+		// for the proposed instance
+		if(res.oldinstance) {
+			acc->commit(instance, res.v_a);
+            stable = true;
+
+            return false;
+		}
+
+		// fill in accepts with set of nodes that accepted the proposal,
+		// set v to the v_a with the highest n_a, and return true
+		else if(res.accept) {
+
+			// add node to the list
+            accepts.push_back(nodes[i]);
+
+			if(res.n_a > highest_n_a) {
+				v = res.v_a;
+				highest_n_a = res.n_a;
+			}
+		}
+
+		else return false;
 	}
 
 	return true;
@@ -224,26 +228,30 @@ proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 		handle m(nodes[i]);
 		rpcc *cl = m.get_rpcc();
 
-		if(cl) {
-			paxos_protocol::acceptarg arg;
-			int res;
-
-			arg.instance = instance;
-			arg.n = my_n; // the current proposal
-			arg.v = v; // the highest proposal accepted so far by all nodes
-
-			int ret = cl->call(paxos_protocol::acceptreq, me, arg, res, rpcc::to(1000));
-			if(ret != paxos_protocol::OK) {
-				printf("proposer::accept: failed\n");
-				continue;
-			}
-
-			// this node has accepted the proposal, add it to the list
-			if(res)
-                accepts.push_back(nodes[i]);
-			else
-				printf("proposer::accept: rejected\n");
+		// something went wrong
+		if(!cl) {
+			printf("proposer::accept: rejected\n");
+			continue;
 		}
+
+		paxos_protocol::acceptarg arg;
+		int res;
+
+		arg.instance = instance;
+		arg.n = my_n; // the current proposal
+		arg.v = v; // the highest proposal accepted so far by all nodes
+
+		int ret = cl->call(paxos_protocol::acceptreq, me, arg, res, rpcc::to(1000));
+		if(ret != paxos_protocol::OK) {
+			printf("proposer::accept: failed\n");
+			continue;
+		}
+
+		// this node has accepted the proposal, add it to the list
+		if(res)
+            accepts.push_back(nodes[i]);
+		else
+			printf("proposer::accept: rejected\n");
 	}
 }
 
@@ -258,21 +266,23 @@ proposer::decide(unsigned instance, std::vector<std::string> nodes,
 		handle m(nodes[i]);
 		rpcc *cl = m.get_rpcc();
 
-		if(cl) {
-			paxos_protocol::decidearg arg;
-			int res;
-
-		    arg.instance = instance;
-		    arg.v = v; // the highest proposal accepted so far by all nodes
-
-			int ret = cl->call(paxos_protocol::decidereq, me, arg, res, rpcc::to(1000));
-			if(ret != paxos_protocol::OK) {
-				printf("proposer::decide: failed\n");
-				continue;
-			}
-		}
-		else
+		// something went wrong
+		if(!cl) {
 			printf("proposer::decide: rejected\n");
+			continue;
+		}
+
+		paxos_protocol::decidearg arg;
+		int res;
+
+	    arg.instance = instance;
+	    arg.v = v; // the highest proposal accepted so far by all nodes
+
+		int ret = cl->call(paxos_protocol::decidereq, me, arg, res, rpcc::to(1000));
+		if(ret != paxos_protocol::OK) {
+			printf("proposer::decide: failed\n");
+			continue;
+		}
 	}
 }
 
