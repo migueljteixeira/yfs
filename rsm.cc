@@ -227,12 +227,8 @@ rsm::join(std::string m) {
 void 
 rsm::commit_change() 
 {
-	//pthread_mutex_lock(&rsm_mutex);
-
 	// sets the primary for the new view
 	set_primary();
-
-	//pthread_mutex_unlock(&rsm_mutex);
 	
 	// since its a view change, we have to run the recovery thread
 	pthread_cond_signal(&recovery_cond);
@@ -314,9 +310,11 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 		// create a new view that contains m
 		cfg->add(m);
 
+		// check to see if m is there
 		if(cfg->ismember(m)) {
 			r.log = cfg->dump();
 		}
+		// if its not something went wrong
 		else {
 			ret = rsm_protocol::ERR;
 		}
