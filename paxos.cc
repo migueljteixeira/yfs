@@ -111,8 +111,6 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 	c_nodes = newnodes; // set current nodes known by me
 	c_v = newv; // set new value we would like to propose
 
-	//accepts.clear();
-	//v.clear();
 	if (prepare(instance, accepts, c_nodes, v)) {
 
 		if (majority(c_nodes, accepts)) {
