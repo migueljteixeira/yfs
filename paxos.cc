@@ -105,13 +105,11 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 	// paxos is running
 	stable = false;
 
-	// sets the last proposal
-	setn();
-	my_n.m = me;
+	setn(); // update the last proposal number (this proposal)
+	my_n.m = me; // who sent the proposal (since im proposing, it's me)
 	
-	// sets current to the new view and value
-	c_nodes = newnodes;
-	c_v = newv;
+	c_nodes = newnodes; // set current nodes known by me
+	c_v = newv; // set new value we would like to propose
 
 	accepts.clear();
 	v.clear();
@@ -149,7 +147,7 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 		printf("paxos::manager: prepare is rejected %d\n", stable);
 	}
 	
-	stable = true;
+	stable = true; // paxos has terminated
 	pthread_mutex_unlock(&pxs_mutex);
 	return r;
 }
@@ -194,7 +192,7 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
                 return false;
 			}
 
-			// fill in accepts with set of nodes that accepted,
+			// fill in accepts with set of nodes that accepted the proposal,
 			// set v to the v_a with the highest n_a, and return true
 			else if(res.accept) {
 
@@ -230,10 +228,9 @@ proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 			paxos_protocol::acceptarg arg;
 			int res;
 
-			// sets accept arguments
 			arg.instance = instance;
-			arg.n = my_n;
-			arg.v = v;
+			arg.n = my_n; // the current proposal
+			arg.v = v; // the highest proposal accepted so far by all nodes
 
 			int ret = cl->call(paxos_protocol::acceptreq, me, arg, res, rpcc::to(1000));
 			if(ret != paxos_protocol::OK) {
@@ -241,7 +238,7 @@ proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 				continue;
 			}
 
-			// this node has accepted, add it to the list
+			// this node has accepted the proposal, add it to the list
 			if(res)
                 accepts.push_back(nodes[i]);
 			else
@@ -254,7 +251,7 @@ void
 proposer::decide(unsigned instance, std::vector<std::string> nodes, 
 	      std::string v)
 {
-	// send decide RPCs to the nodes that have already accepted
+	// send decide RPCs to the nodes that have already accepted the proposal
 	for (unsigned i = 0; i < nodes.size(); i++) {
 
 		// instantiates a RPC client for this node
@@ -265,9 +262,8 @@ proposer::decide(unsigned instance, std::vector<std::string> nodes,
 			paxos_protocol::decidearg arg;
 			int res;
 
-			// sets decide arguments
 		    arg.instance = instance;
-		    arg.v = v;
+		    arg.v = v; // the highest proposal accepted so far by all nodes
 
 			int ret = cl->call(paxos_protocol::decidereq, me, arg, res, rpcc::to(1000));
 			if(ret != paxos_protocol::OK) {
@@ -312,7 +308,7 @@ paxos_protocol::status
 acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
     paxos_protocol::prepareres &r)
 {
-	// the prepare is older than the instance we're on
+	// the proposal is older than the instance we're on
 	// send back to the proposer the value that was agreed on that instance
 	if(a.instance <= instance_h) {
 		r.oldinstance = 1; // true
@@ -320,20 +316,21 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 		r.n_a = n_a;
 		r.v_a = values[a.instance];
 	}
-	// its a new prepare, higher than we've seen
+	// it's a new proposal, higher than we've seen so far
 	else if(a.n > n_h) {
 		n_h = a.n;
 
-		// informs the proposer of the highest accept we've seen (and its value)
+		// informs the proposer of the highest accept proposal
+		// we've seen so far (and its value)
 		r.oldinstance = 0; // false
 		r.accept = 1; // true
 		r.n_a = n_a;
 		r.v_a = v_a;
 
-		// its a higher prepare than we've seen so we log this
+		// it's a higher proposal than we've seen, so we log it
 		l->loghigh(n_h);
 	}
-	// this shouldnt happen
+	// this shouldn't happen
 	else {
 		r.oldinstance = 0; // false
 		r.accept = 0; // false
@@ -345,8 +342,8 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 paxos_protocol::status
 acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 {
-	// the accept is equal (in case it comes from the previous prepare)
-	// or higher than we've seen, so we accept it
+	// the proposal is equal (in case it comes from the previous proposal)
+	// or higher than we've seen so far, so we accept it
 	if(a.n >= n_h) {
 		n_a = a.n;
 		v_a = a.v;

@@ -312,9 +312,11 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 
 		// check to see if m is there
 		if(cfg->ismember(m)) {
+
+			// if it's, lets update our log file
 			r.log = cfg->dump();
 		}
-		// if its not something went wrong
+		// if it's not, something went wrong
 		else {
 			ret = rsm_protocol::ERR;
 		}
