@@ -101,18 +101,20 @@ proposer::run(int instance, std::vector<std::string> newnodes, std::string newv)
 		pthread_mutex_unlock(&pxs_mutex);
 		return false;
 	}
+	
+	// paxos is running
+	stable = false;
 
 	// sets the last proposal
 	setn();
 	my_n.m = me;
-
-	accepts.clear();
-	v.clear();
 	
-	stable = false;
+	// sets current to the new view and value
 	c_nodes = newnodes;
 	c_v = newv;
 
+	accepts.clear();
+	v.clear();
 	if (prepare(instance, accepts, c_nodes, v)) {
 
 		if (majority(c_nodes, accepts)) {
@@ -157,29 +159,34 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
          std::vector<std::string> nodes,
          std::string &v)
 {
-	// set id to the minimum (to be updated in the following loop with larger id)
-    prop_t highest_n_a = {0, std::string()};
+	// sets number of the highest proposal accepted to the minimum
+	// it will be updated in the next loop
+	prop_t highest_n_a = {0, std::string()};
 
 	// send prepare RPCs to nodes and collect responses
 	for (unsigned i = 0; i < nodes.size(); i++) {
 
+		// instantiates a RPC client for this node
 		handle m(nodes[i]);
 		rpcc *cl = m.get_rpcc();
 
 		if(cl) {
+			paxos_protocol::preparearg arg;
 			paxos_protocol::prepareres res;
-            paxos_protocol::preparearg arg;
 
-            arg.instance = instance;
-            arg.n = my_n;
+			// sets prepare arguments
+			arg.instance = instance;
+			arg.n = my_n;
 
 			int ret = cl->call(paxos_protocol::preparereq, me, arg, res, rpcc::to(1000));
 			if(ret != paxos_protocol::OK) {
-				printf("proposer::prepare failed\n");
+				printf("proposer::prepare: failed\n");
 				continue;
 			}
 				
-			// if one of the nodes replies with an oldinstance, return false
+			// if one of the nodes replies with an oldinstance it means
+			// this propose is old so we'll update this node with the value
+			// for the proposed instance
 			if(res.oldinstance) {
 				acc->commit(instance, res.v_a);
                 stable = true;
@@ -215,29 +222,30 @@ proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 	// send accept RPCs to nodes and collect nodes that accepted
 	for (unsigned i = 0; i < nodes.size(); i++) {
 
+		// instantiates a RPC client for this node
 		handle m(nodes[i]);
 		rpcc *cl = m.get_rpcc();
 
 		if(cl) {
+			paxos_protocol::acceptarg arg;
 			int res;
-            paxos_protocol::acceptarg arg;
 
-            arg.instance = instance;
-            arg.n = my_n;
+			// sets accept arguments
+			arg.instance = instance;
+			arg.n = my_n;
 			arg.v = v;
 
 			int ret = cl->call(paxos_protocol::acceptreq, me, arg, res, rpcc::to(1000));
 			if(ret != paxos_protocol::OK) {
-				printf("proposer::accept failed\n");
+				printf("proposer::accept: failed\n");
 				continue;
 			}
 
-			if(res) {
-				// this node has accepted, added it to the list
+			// this node has accepted, add it to the list
+			if(res)
                 accepts.push_back(nodes[i]);
-			}
 			else
-				printf("proposer::accept rejected\n");
+				printf("proposer::accept: rejected\n");
 		}
 	}
 }
@@ -249,20 +257,26 @@ proposer::decide(unsigned instance, std::vector<std::string> nodes,
 	// send decide RPCs to the nodes that have already accepted
 	for (unsigned i = 0; i < nodes.size(); i++) {
 
+		// instantiates a RPC client for this node
 		handle m(nodes[i]);
 		rpcc *cl = m.get_rpcc();
 
 		if(cl) {
-			int res;
 			paxos_protocol::decidearg arg;
+			int res;
 
+			// sets decide arguments
 		    arg.instance = instance;
 		    arg.v = v;
 
-			cl->call(paxos_protocol::decidereq, me, arg, res, rpcc::to(1000));
+			int ret = cl->call(paxos_protocol::decidereq, me, arg, res, rpcc::to(1000));
+			if(ret != paxos_protocol::OK) {
+				printf("proposer::decide: failed\n");
+				continue;
+			}
 		}
 		else
-			printf("proposer::decide rejected\n");
+			printf("proposer::decide: rejected\n");
 	}
 }
 
@@ -298,23 +312,28 @@ paxos_protocol::status
 acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
     paxos_protocol::prepareres &r)
 {
+	// the prepare is older than the instance we're on
+	// send back to the proposer the value that was agreed on that instance
 	if(a.instance <= instance_h) {
 		r.oldinstance = 1; // true
 		r.accept = 0; // false
 		r.n_a = n_a;
-		r.v_a = values[instance_h];
+		r.v_a = values[a.instance];
 	}
+	// its a new prepare, higher than we've seen
 	else if(a.n > n_h) {
 		n_h = a.n;
 
+		// informs the proposer of the highest accept we've seen (and its value)
 		r.oldinstance = 0; // false
 		r.accept = 1; // true
 		r.n_a = n_a;
 		r.v_a = v_a;
 
-		// its a bigger proposal than we've seen
+		// its a higher prepare than we've seen so we log this
 		l->loghigh(n_h);
 	}
+	// this shouldnt happen
 	else {
 		r.oldinstance = 0; // false
 		r.accept = 0; // false
@@ -326,12 +345,14 @@ acceptor::preparereq(std::string src, paxos_protocol::preparearg a,
 paxos_protocol::status
 acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 {
+	// the accept is equal (in case it comes from the previous prepare)
+	// or higher than we've seen, so we accept it
 	if(a.n >= n_h) {
 		n_a = a.n;
 		v_a = a.v;
 		r = 1; // true
 
-		// accept the proposal
+		// since we accepted the proposal, we log it
 		l->logprop(n_a, v_a);
 	}
 	else {
@@ -344,6 +365,8 @@ acceptor::acceptreq(std::string src, paxos_protocol::acceptarg a, int &r)
 paxos_protocol::status
 acceptor::decidereq(std::string src, paxos_protocol::decidearg a, int &r)
 {
+	// the proposal has been decided, we finally update the
+	// instance and value (this requires locking)
 	if (a.instance > instance_h) {
 		commit(a.instance, a.v);
 	}
