@@ -190,8 +190,6 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
 		// for the proposed instance
 		if(res.oldinstance) {
 			acc->commit(instance, res.v_a);
-            stable = true;
-
             return false;
 		}
 
