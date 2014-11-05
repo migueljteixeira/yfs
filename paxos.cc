@@ -190,7 +190,7 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
 		// for the proposed instance
 		if(res.oldinstance) {
 			acc->commit(instance, res.v_a);
-            return false;
+			return false;
 		}
 
 		// fill in accepts with set of nodes that accepted the proposal,
@@ -198,7 +198,7 @@ proposer::prepare(unsigned instance, std::vector<std::string> &accepts,
 		else if(res.accept) {
 
 			// add node to the list
-            accepts.push_back(nodes[i]);
+			accepts.push_back(nodes[i]);
 
 			if(res.n_a > highest_n_a) {
 				v = res.v_a;
@@ -245,7 +245,7 @@ proposer::accept(unsigned instance, std::vector<std::string> &accepts,
 
 		// this node has accepted the proposal, add it to the list
 		if(res)
-            accepts.push_back(nodes[i]);
+			accepts.push_back(nodes[i]);
 		else
 			printf("proposer::accept: rejected\n");
 	}
@@ -271,8 +271,8 @@ proposer::decide(unsigned instance, std::vector<std::string> nodes,
 		paxos_protocol::decidearg arg;
 		int res;
 
-	    arg.instance = instance;
-	    arg.v = v; // the highest proposal accepted so far by all nodes
+		arg.instance = instance;
+		arg.v = v; // the highest proposal accepted so far by all nodes
 
 		int ret = cl->call(paxos_protocol::decidereq, me, arg, res, rpcc::to(1000));
 		if(ret != paxos_protocol::OK) {
