@@ -10,6 +10,7 @@ typedef enum {
 } clockid_t;
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp);
+
 #endif
 
 #endif

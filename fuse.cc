@@ -22,7 +22,7 @@ int myid;
 yfs_client *yfs;
 
 int id() { 
-  return myid;
+	return myid;
 }
 
 yfs_client::status
@@ -73,50 +73,50 @@ void
 fuseserver_getattr(fuse_req_t req, fuse_ino_t ino,
           struct fuse_file_info *fi)
 {
-    struct stat st;
-    yfs_client::inum inum = ino; // req->in.h.nodeid;
-    yfs_client::status ret;
+	struct stat st;
+	yfs_client::inum inum = ino; // req->in.h.nodeid;
+	yfs_client::status ret;
 
-    ret = getattr(inum, st);
-    if(ret != yfs_client::OK){
-      fuse_reply_err(req, ENOENT);
-      return;
-    }
-    fuse_reply_attr(req, &st, 0);
+	ret = getattr(inum, st);
+	if(ret != yfs_client::OK){
+		fuse_reply_err(req, ENOENT);
+		return;
+	}
+	fuse_reply_attr(req, &st, 0);
 }
 
 void
 fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
-  if (FUSE_SET_ATTR_SIZE & to_set) {
-	// check if its a directory, we can't change its size
-	if(yfs->isdir(ino)) {
-		fuse_reply_err(req, EISDIR);
-		return;
-	}
+	if (FUSE_SET_ATTR_SIZE & to_set) {
+		// check if its a directory, we can't change its size
+		if(yfs->isdir(ino)) {
+			fuse_reply_err(req, EISDIR);
+			return;
+		}
 
-	yfs->acquire_lock(ino);
+		yfs->acquire_lock(ino);
 
-	// sets file size
-	if(yfs->setfilesize(ino, attr->st_size) != yfs_client::OK) {
+		// sets file size
+		if(yfs->setfilesize(ino, attr->st_size) != yfs_client::OK) {
+			yfs->release_lock(ino);
+			fuse_reply_err(req, ENOENT);
+			return;
+		}
+
 		yfs->release_lock(ino);
-		fuse_reply_err(req, ENOENT);
-		return;
+
+		struct stat st;
+		getattr(ino, st);
+		fuse_reply_attr(req, &st, 0);
+	} else {
+		fuse_reply_err(req, ENOSYS);
 	}
-
-	yfs->release_lock(ino);
-
-    struct stat st;
-	getattr(ino, st);
-    fuse_reply_attr(req, &st, 0);
-  } else {
-    fuse_reply_err(req, ENOSYS);
-  }
 }
 
 void
 fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
-      off_t off, struct fuse_file_info *fi)
+	off_t off, struct fuse_file_info *fi)
 {
 	yfs->acquire_lock(ino);
 
@@ -133,8 +133,8 @@ fuseserver_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 
 void
 fuseserver_write(fuse_req_t req, fuse_ino_t ino,
-  const char *buf, size_t size, off_t off,
-  struct fuse_file_info *fi)
+	const char *buf, size_t size, off_t off,
+	struct fuse_file_info *fi)
 {
 	yfs->acquire_lock(ino);
 
@@ -302,30 +302,30 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 
 
 struct dirbuf {
-    char *p;
-    size_t size;
+	char *p;
+	size_t size;
 };
 
 void dirbuf_add(struct dirbuf *b, const char *name, fuse_ino_t ino)
 {
-    struct stat stbuf;
-    size_t oldsize = b->size;
-    b->size += fuse_dirent_size(strlen(name));
-    b->p = (char *) realloc(b->p, b->size);
-    memset(&stbuf, 0, sizeof(stbuf));
-    stbuf.st_ino = ino;
-    fuse_add_dirent(b->p + oldsize, name, &stbuf, b->size);
+	struct stat stbuf;
+	size_t oldsize = b->size;
+	b->size += fuse_dirent_size(strlen(name));
+	b->p = (char *) realloc(b->p, b->size);
+	memset(&stbuf, 0, sizeof(stbuf));
+	stbuf.st_ino = ino;
+	fuse_add_dirent(b->p + oldsize, name, &stbuf, b->size);
 }
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 int reply_buf_limited(fuse_req_t req, const char *buf, size_t bufsize,
-          off_t off, size_t maxsize)
+	off_t off, size_t maxsize)
 {
-  if (off < bufsize)
-    return fuse_reply_buf(req, buf + off, min(bufsize - off, maxsize));
-  else
-    return fuse_reply_buf(req, NULL, 0);
+	if (off < bufsize)
+		return fuse_reply_buf(req, buf + off, min(bufsize - off, maxsize));
+	else
+		return fuse_reply_buf(req, NULL, 0);
 }
 
 void
@@ -430,16 +430,16 @@ void
 fuseserver_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
      mode_t mode)
 {
-  yfs->acquire_lock(parent);
+	yfs->acquire_lock(parent);
 
-  struct fuse_entry_param e;
-  if( fuseserver_mkdir_helper(parent, name, mode, &e) == yfs_client::OK ) {
-    fuse_reply_entry(req, &e);
-  } else {
-    fuse_reply_err(req, ENOENT);
-  }
+	struct fuse_entry_param e;
+	if( fuseserver_mkdir_helper(parent, name, mode, &e) == yfs_client::OK ) {
+		fuse_reply_entry(req, &e);
+	} else {
+		fuse_reply_err(req, ENOENT);
+	}
 
-  yfs->release_lock(parent);
+	yfs->release_lock(parent);
 }
 
 void
@@ -481,16 +481,16 @@ fuseserver_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 void
 fuseserver_statfs(fuse_req_t req)
 {
-  struct statvfs buf;
+	struct statvfs buf;
 
-  printf("statfs\n");
+	printf("statfs\n");
 
-  memset(&buf, 0, sizeof(buf));
+	memset(&buf, 0, sizeof(buf));
 
-  buf.f_namemax = 255;
-  buf.f_bsize = 512;
+	buf.f_namemax = 255;
+	buf.f_bsize = 512;
 
-  fuse_reply_statfs(req, &buf);
+	fuse_reply_statfs(req, &buf);
 }
 
 struct fuse_lowlevel_ops fuseserver_oper;
@@ -498,93 +498,93 @@ struct fuse_lowlevel_ops fuseserver_oper;
 int
 main(int argc, char *argv[])
 {
-  char *mountpoint = 0;
-  int err = -1;
-  int fd;
+	char *mountpoint = 0;
+	int err = -1;
+	int fd;
 
-  setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stdout, NULL, _IONBF, 0);
 
-  if(argc != 4){
-    fprintf(stderr, "Usage: yfs_client <mountpoint> <port-extent-server> <port-lock-server>\n");
-    exit(1);
-  }
-  mountpoint = argv[1];
+	if(argc != 4){
+		fprintf(stderr, "Usage: yfs_client <mountpoint> <port-extent-server> <port-lock-server>\n");
+		exit(1);
+	}
+	mountpoint = argv[1];
 
-  srandom(getpid());
+	srandom(getpid());
 
-  myid = random();
+	myid = random();
 
-  yfs = new yfs_client(argv[2], argv[3]);
+	yfs = new yfs_client(argv[2], argv[3]);
 
-  fuseserver_oper.getattr    = fuseserver_getattr;
-  fuseserver_oper.statfs     = fuseserver_statfs;
-  fuseserver_oper.readdir    = fuseserver_readdir;
-  fuseserver_oper.lookup     = fuseserver_lookup;
-  fuseserver_oper.create     = fuseserver_create;
-  fuseserver_oper.mknod      = fuseserver_mknod;
-  fuseserver_oper.open       = fuseserver_open;
-  fuseserver_oper.read       = fuseserver_read;
-  fuseserver_oper.write      = fuseserver_write;
-  fuseserver_oper.setattr    = fuseserver_setattr;
-  fuseserver_oper.unlink     = fuseserver_unlink;
-  fuseserver_oper.mkdir      = fuseserver_mkdir;
+	fuseserver_oper.getattr    = fuseserver_getattr;
+	fuseserver_oper.statfs     = fuseserver_statfs;
+	fuseserver_oper.readdir    = fuseserver_readdir;
+	fuseserver_oper.lookup     = fuseserver_lookup;
+	fuseserver_oper.create     = fuseserver_create;
+	fuseserver_oper.mknod      = fuseserver_mknod;
+	fuseserver_oper.open       = fuseserver_open;
+	fuseserver_oper.read       = fuseserver_read;
+	fuseserver_oper.write      = fuseserver_write;
+	fuseserver_oper.setattr    = fuseserver_setattr;
+	fuseserver_oper.unlink     = fuseserver_unlink;
+	fuseserver_oper.mkdir      = fuseserver_mkdir;
 
-  const char *fuse_argv[20];
-  int fuse_argc = 0;
-  fuse_argv[fuse_argc++] = argv[0];
-#ifdef __APPLE__
-  fuse_argv[fuse_argc++] = "-o";
-  fuse_argv[fuse_argc++] = "nolocalcaches"; // no dir entry caching
-  fuse_argv[fuse_argc++] = "-o";
-  fuse_argv[fuse_argc++] = "daemon_timeout=86400";
-#endif
+	const char *fuse_argv[20];
+	int fuse_argc = 0;
+	fuse_argv[fuse_argc++] = argv[0];
+	#ifdef __APPLE__
+	fuse_argv[fuse_argc++] = "-o";
+	fuse_argv[fuse_argc++] = "nolocalcaches"; // no dir entry caching
+	fuse_argv[fuse_argc++] = "-o";
+	fuse_argv[fuse_argc++] = "daemon_timeout=86400";
+	#endif
 
-  // everyone can play, why not?
-  //fuse_argv[fuse_argc++] = "-o";
-  //fuse_argv[fuse_argc++] = "allow_other";
+	// everyone can play, why not?
+	//fuse_argv[fuse_argc++] = "-o";
+	//fuse_argv[fuse_argc++] = "allow_other";
 
-  fuse_argv[fuse_argc++] = mountpoint;
-  fuse_argv[fuse_argc++] = "-d";
+	fuse_argv[fuse_argc++] = mountpoint;
+	fuse_argv[fuse_argc++] = "-d";
 
-  fuse_args args = FUSE_ARGS_INIT( fuse_argc, (char **) fuse_argv );
-  int foreground;
-  int res = fuse_parse_cmdline( &args, &mountpoint, 0 /*multithreaded*/, 
-        &foreground );
-  if( res == -1 ) {
-    fprintf(stderr, "fuse_parse_cmdline failed\n");
-    return 0;
-  }
-  
-  args.allocated = 0;
+	fuse_args args = FUSE_ARGS_INIT( fuse_argc, (char **) fuse_argv );
+	int foreground;
+	int res = fuse_parse_cmdline( &args, &mountpoint, 0 /*multithreaded*/, 
+	&foreground );
+	if( res == -1 ) {
+		fprintf(stderr, "fuse_parse_cmdline failed\n");
+		return 0;
+	}
 
-  fd = fuse_mount(mountpoint, &args);
-  if(fd == -1){
-    fprintf(stderr, "fuse_mount failed\n");
-    exit(1);
-  }
+	args.allocated = 0;
 
-  struct fuse_session *se;
+	fd = fuse_mount(mountpoint, &args);
+	if(fd == -1){
+		fprintf(stderr, "fuse_mount failed\n");
+		exit(1);
+	}
 
-  se = fuse_lowlevel_new(&args, &fuseserver_oper, sizeof(fuseserver_oper),
-       NULL);
-  if(se == 0){
-    fprintf(stderr, "fuse_lowlevel_new failed\n");
-    exit(1);
-  }
+	struct fuse_session *se;
 
-  struct fuse_chan *ch = fuse_kern_chan_new(fd);
-  if (ch == NULL) {
-    fprintf(stderr, "fuse_kern_chan_new failed\n");
-    exit(1);
-  }
+	se = fuse_lowlevel_new(&args, &fuseserver_oper, sizeof(fuseserver_oper),
+	NULL);
+	if(se == 0){
+		fprintf(stderr, "fuse_lowlevel_new failed\n");
+		exit(1);
+	}
 
-  fuse_session_add_chan(se, ch);
-  // err = fuse_session_loop_mt(se);   // FK: wheelfs does this; why?
-  err = fuse_session_loop(se);
-    
-  fuse_session_destroy(se);
-  close(fd);
-  fuse_unmount(mountpoint);
+	struct fuse_chan *ch = fuse_kern_chan_new(fd);
+	if (ch == NULL) {
+		fprintf(stderr, "fuse_kern_chan_new failed\n");
+		exit(1);
+	}
 
-  return err ? 1 : 0;
+	fuse_session_add_chan(se, ch);
+	// err = fuse_session_loop_mt(se);   // FK: wheelfs does this; why?
+	err = fuse_session_loop(se);
+
+	fuse_session_destroy(se);
+	close(fd);
+	fuse_unmount(mountpoint);
+
+	return err ? 1 : 0;
 }

@@ -16,44 +16,45 @@
 bool
 operator> (const prop_t &a, const prop_t &b)
 {
-  return (a.n > b.n || (a.n == b.n && a.m > b.m));
+	return (a.n > b.n || (a.n == b.n && a.m > b.m));
 }
 
 bool
 operator>= (const prop_t &a, const prop_t &b)
 {
-  return (a.n > b.n || (a.n == b.n && a.m >= b.m));
+	return (a.n > b.n || (a.n == b.n && a.m >= b.m));
 }
 
 std::string
 print_members(const std::vector<std::string> &nodes)
 {
-  std::string s;
-  s.clear();
-  for (unsigned i = 0; i < nodes.size(); i++) {
-    s += nodes[i];
-    if (i < (nodes.size()-1))
-      s += ",";
-  }
-  return s;
+	std::string s;
+	s.clear();
+	for (unsigned i = 0; i < nodes.size(); i++) {
+		s += nodes[i];
+		if (i < (nodes.size()-1))
+			s += ",";
+	}
+	return s;
 }
 
 bool isamember(std::string m, const std::vector<std::string> &nodes)
 {
-  for (unsigned i = 0; i < nodes.size(); i++) {
-    if (nodes[i] == m) return 1;
-  }
-  return 0;
+	for (unsigned i = 0; i < nodes.size(); i++) {
+		if (nodes[i] == m)
+			return 1;
+	}
+	return 0;
 }
 
 bool
 proposer::isrunning()
 {
-  bool r;
-  assert(pthread_mutex_lock(&pxs_mutex)==0);
-  r = !stable;
-  assert(pthread_mutex_unlock(&pxs_mutex)==0);
-  return r;
+	bool r;
+	assert(pthread_mutex_lock(&pxs_mutex)==0);
+	r = !stable;
+	assert(pthread_mutex_unlock(&pxs_mutex)==0);
+	return r;
 }
 
 // check if the servers in l2 contains a majority of servers in l1
@@ -61,28 +62,25 @@ bool
 proposer::majority(const std::vector<std::string> &l1, 
 		const std::vector<std::string> &l2)
 {
-  unsigned n = 0;
+	unsigned n = 0;
 
-  for (unsigned i = 0; i < l1.size(); i++) {
-    if (isamember(l1[i], l2))
-      n++;
-  }
-  return n >= (l1.size() >> 1) + 1;
+	for (unsigned i = 0; i < l1.size(); i++) {
+		if (isamember(l1[i], l2))
+			n++;
+	}
+	return n >= (l1.size() >> 1) + 1;
 }
 
-proposer::proposer(class paxos_change *_cfg, class acceptor *_acceptor, 
-		   std::string _me)
-  : cfg(_cfg), acc (_acceptor), me (_me), break1 (false), break2 (false), 
-    stable (true)
+proposer::proposer(class paxos_change *_cfg, class acceptor *_acceptor, std::string _me)
+:	cfg(_cfg), acc (_acceptor), me (_me), break1 (false), break2 (false), stable (true)
 {
-  assert (pthread_mutex_init(&pxs_mutex, NULL) == 0);
-
+	assert (pthread_mutex_init(&pxs_mutex, NULL) == 0);
 }
 
 void
 proposer::setn()
 {
-  my_n.n = acc->get_n_h().n + 1 > my_n.n + 1 ? acc->get_n_h().n + 1 : my_n.n + 1;
+	my_n.n = acc->get_n_h().n + 1 > my_n.n + 1 ? acc->get_n_h().n + 1 : my_n.n + 1;
 }
 
 bool
@@ -282,9 +280,8 @@ proposer::decide(unsigned instance, std::vector<std::string> nodes,
 	}
 }
 
-acceptor::acceptor(class paxos_change *_cfg, bool _first, std::string _me, 
-	     std::string _value)
-  : cfg(_cfg), me (_me), instance_h(0)
+acceptor::acceptor(class paxos_change *_cfg, bool _first, std::string _me, std::string _value)
+:	cfg(_cfg), me (_me), instance_h(0)
 {
 	assert (pthread_mutex_init(&pxs_mutex, NULL) == 0);
 
@@ -370,9 +367,7 @@ acceptor::decidereq(std::string src, paxos_protocol::decidearg a, int &r)
 {
 	// the proposal has been decided, we finally update the
 	// instance and value (this requires locking)
-	if (a.instance > instance_h) {
-		commit(a.instance, a.v);
-	}
+	commit(a.instance, a.v);
 
 	return paxos_protocol::OK;
 }
@@ -380,45 +375,45 @@ acceptor::decidereq(std::string src, paxos_protocol::decidearg a, int &r)
 void
 acceptor::commit_wo(unsigned instance, std::string value)
 {
-  //assume pxs_mutex is held
-  printf("acceptor::commit: instance=%d has v= %s\n", instance, value.c_str());
-  if (instance > instance_h) {
-    printf("commit: highestaccepteinstance = %d\n", instance);
-    values[instance] = value;
-    l->loginstance(instance, value);
-    instance_h = instance;
-    n_h.n = 0;
-    n_h.m = me;
-    n_a.n = 0;
-    n_a.m = me;
-    v_a.clear();
-    if (cfg) {
-      pthread_mutex_unlock(&pxs_mutex);
-      cfg->paxos_commit(instance, value);
-      pthread_mutex_lock(&pxs_mutex);
-    }
-  }
+	//assume pxs_mutex is held
+	printf("acceptor::commit: instance=%d has v= %s\n", instance, value.c_str());
+	if (instance > instance_h) {
+		printf("commit: highestaccepteinstance = %d\n", instance);
+		values[instance] = value;
+		l->loginstance(instance, value);
+		instance_h = instance;
+		n_h.n = 0;
+		n_h.m = me;
+		n_a.n = 0;
+		n_a.m = me;
+		v_a.clear();
+		if (cfg) {
+			pthread_mutex_unlock(&pxs_mutex);
+			cfg->paxos_commit(instance, value);
+			pthread_mutex_lock(&pxs_mutex);
+		}
+	}
 }
 
 void
 acceptor::commit(unsigned instance, std::string value)
 {
-  pthread_mutex_lock(&pxs_mutex);
-  commit_wo(instance, value);
-  pthread_mutex_unlock(&pxs_mutex);
+	pthread_mutex_lock(&pxs_mutex);
+	commit_wo(instance, value);
+	pthread_mutex_unlock(&pxs_mutex);
 }
 
 std::string
 acceptor::dump()
 {
-  return l->dump();
+	return l->dump();
 }
 
 void
 acceptor::restore(std::string s)
 {
-  l->restore(s);
-  l->logread();
+	l->restore(s);
+	l->logread();
 }
 
 
@@ -429,30 +424,30 @@ acceptor::restore(std::string s)
 void
 proposer::breakpoint1()
 {
-  if (break1) {
-    printf("Dying at breakpoint 1!\n");
-    exit(1);
-  }
+	if (break1) {
+		printf("Dying at breakpoint 1!\n");
+		exit(1);
+	}
 }
 
 // Call this from your code between phases accept and decide of proposer
 void
 proposer::breakpoint2()
 {
-  if (break2) {
-    printf("Dying at breakpoint 2!\n");
-    exit(1);
-  }
+	if (break2) {
+		printf("Dying at breakpoint 2!\n");
+		exit(1);
+	}
 }
 
 void
 proposer::breakpoint(int b)
 {
-  if (b == 3) {
-    printf("Proposer: breakpoint 1\n");
-    break1 = true;
-  } else if (b == 4) {
-    printf("Proposer: breakpoint 2\n");
-    break2 = true;
-  }
+	if (b == 3) {
+		printf("Proposer: breakpoint 1\n");
+		break1 = true;
+	} else if (b == 4) {
+		printf("Proposer: breakpoint 2\n");
+		break2 = true;
+	}
 }

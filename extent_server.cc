@@ -1,5 +1,3 @@
-// the extent server implementation
-
 #include "extent_server.h"
 #include <sstream>
 #include <stdio.h>

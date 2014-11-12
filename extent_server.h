@@ -1,5 +1,3 @@
-// this is the extent server
-
 #ifndef extent_server_h
 #define extent_server_h
 
