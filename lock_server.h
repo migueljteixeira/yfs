@@ -15,19 +15,18 @@ class lock_server {
 	protected:
 		int nacquire;
 		lock_protocol::lockid_t clientID;
-		enum lock_status { LOCKED, FREE } status;
 
 		rsm *rs;
 
-		//pthread_mutex_t global_mutex;
+		pthread_mutex_t global_mutex;
 
-		/*struct lockid_info {
+		struct lockid_info {
 			enum lock_status { LOCKED, FREE } status;
-			pthread_mutex_t *mutex;
-			pthread_cond_t *wait;
+			//pthread_mutex_t *mutex;
+			//pthread_cond_t *wait;
 		};
 
-		std::map<lock_protocol::lockid_t, lock_server::lockid_info*> locks;*/
+		std::map<lock_protocol::lockid_t, lock_server::lockid_info*> locks;
 
 	public:
 		lock_server(rsm *rsm);
