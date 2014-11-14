@@ -146,6 +146,9 @@ rsm::reg1(int proc, handler *h)
 void
 rsm::recovery()
 {
+	// temporary !
+	//inviewchange = true;
+
 	bool r = false;
 
 	assert(pthread_mutex_lock(&rsm_mutex)==0);
@@ -289,9 +292,68 @@ rsm::execute(int procno, std::string req)
 rsm_client_protocol::status
 rsm::client_invoke(int procno, std::string req, std::string &r)
 {
-	int ret = rsm_protocol::OK;
-	// For lab 6
-	return ret;
+	printf(" RSM:CLIENT_INVOKE:: !?!\n");
+
+	// If this RSM replica is undergoing Paxos view changes,
+	// reply with BUSY to tell the client to try again later
+	if(inviewchange)
+		return rsm_client_protocol::BUSY;
+
+	// If this RSM replica is not the master,
+	// reply with the NOTPRIMARY status
+	if(!amiprimary())
+		return rsm_client_protocol::NOTPRIMARY;
+
+	pthread_mutex_lock(&rsm_mutex);
+
+		last_myvs = myvs;
+		myvs.seqno++; // assign the next viewstamp in sequence
+
+	pthread_mutex_unlock(&rsm_mutex);
+
+	pthread_mutex_lock(&invoke_mutex);
+
+		// get current view
+		std::vector<std::string> current_view = cfg->get_curview();
+
+		// send invoke RPCs to nodes
+		for (unsigned i = 0; i < current_view.size(); i++) {
+
+			printf(" EXECUTING:: ! %d\n", i);
+
+			// if this node is me, continue
+			if(i == cfg->vid()) continue;
+
+			// instantiates a RPC client for this node
+			handle m(current_view[i]);
+			rpcc *cl = m.get_rpcc();
+
+			// something went wrong
+			if(!cl) {
+				printf("rsm::client_invoke: rejected\n");
+				//continue;
+				return rsm_client_protocol::BUSY;
+			}
+
+			int ret = cl->call(rsm_protocol::invoke, procno, last_myvs,
+						req, rpcc::to(1000));
+
+			printf("DONE! !!!!!!!!!!!! %d\n", ret);
+
+			if(ret != rsm_protocol::OK) {
+				printf("rsm::client_invoke: failed\n");
+				//continue;
+				return rsm_client_protocol::BUSY;
+			}
+
+		}
+
+	pthread_mutex_unlock(&invoke_mutex);
+
+	// execute the RSM request
+	execute(procno, req);
+
+	return rsm_protocol::OK;
 }
 
 // 
@@ -304,8 +366,28 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 rsm_protocol::status
 rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 {
+	printf("rsm::invoke: IN!\n");
+
 	rsm_protocol::status ret = rsm_protocol::OK;
-	// For lab 6
+
+	pthread_mutex_lock(&rsm_mutex);
+
+		// ensure the request has the expected sequence number 
+		// and i am under the current stable view
+		// before executing it
+		if(! (myvs.seqno == vs.seqno && myvs.vid == vs.vid))
+			ret = rsm_protocol::ERR;
+
+		// if i have not finished state synchronization,
+		// i should not process any RSM requests
+		if(! inviewchange)
+			ret = rsm_protocol::ERR;
+
+		last_myvs = myvs;
+		myvs.seqno++; // assign the next viewstamp in sequence
+
+	pthread_mutex_unlock(&rsm_mutex);
+
 	return ret;
 }
 

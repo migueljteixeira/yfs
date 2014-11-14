@@ -4,11 +4,12 @@
 #include <string>
 #include "lock_protocol.h"
 #include "rpc.h"
+#include "rsm_client.h"
 
 class lock_client {
 
 	protected:
-		rpcc *cl;
+		rsm_client *cl;
 
 	public:
 		lock_client(std::string d);

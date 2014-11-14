@@ -26,18 +26,12 @@ main(int argc, char *argv[])
 	// server and the RSM.  In Lab 5, we disable the lock server and
 	// implement Paxos.  In Lab 6, we will make the lock server use your
 	// RSM layer.
-	#define	RSM
-	#ifdef RSM
-		rsm rsm(argv[1], argv[2]);
-	#endif
+	rsm rsm(argv[1], argv[2]);
 
-	#ifndef RSM
-		lock_server ls;
-		rpcs server(atoi(argv[1]));
-		server.reg(lock_protocol::stat, &ls, &lock_server::stat);
-		server.reg(lock_protocol::acquire, &ls, &lock_server::acquire);
-		server.reg(lock_protocol::release, &ls, &lock_server::release);
-	#endif
+	lock_server ls(&rsm);
+	rsm.reg(lock_protocol::stat, &ls, &lock_server::stat);
+	rsm.reg(lock_protocol::acquire, &ls, &lock_server::acquire);
+	rsm.reg(lock_protocol::release, &ls, &lock_server::release);
 
 	while(1)
 		sleep(1000);

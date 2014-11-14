@@ -8,8 +8,12 @@
 #undef max
 #include <algorithm>
 
-lock_server::lock_server():nacquire (0) {
-	pthread_mutex_init(&global_mutex, NULL);
+lock_server::lock_server(rsm *rsm)
+ :	nacquire (0)
+{
+	//pthread_mutex_init(&global_mutex, NULL);
+	status = FREE;
+	rs = rsm;
 }
 
 lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, int &r) {
@@ -21,7 +25,7 @@ lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, in
 
 lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r) {
 
-	// lockid does not exist, we have to create a new one
+	/*// lockid does not exist, we have to create a new one
 	pthread_mutex_lock( &global_mutex );
 	if( locks.find(lid) == locks.end() ) {
 		// create new lockid entry
@@ -49,26 +53,35 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 
 		// block current thread
 		assert( pthread_cond_wait(lockid_info_ptr->wait, lockid_info_ptr->mutex) == 0 );
-	}
+	}*/
 
-	lockid_info_ptr->status = lockid_info::LOCKED;
+	if(! rs->amiprimary())
+		return lock_protocol::IOERR;
 
-	assert( pthread_mutex_unlock (lockid_info_ptr->mutex) == 0 );
+	if(status == LOCKED)
+		return lock_protocol::RETRY;
+
+	status = LOCKED;
+
+	//assert( pthread_mutex_unlock (lockid_info_ptr->mutex) == 0 );
 
 	return lock_protocol::OK;
 }
 
 lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid, int &r) {
-	lock_server::lockid_info *lock_info = locks.find(lid)->second;
+	//lock_server::lockid_info *lock_info = locks.find(lid)->second;
 
-	assert( pthread_mutex_lock (lock_info->mutex) == 0 );
+	//assert( pthread_mutex_lock (lock_info->mutex) == 0 );
 
-	lock_info->status = lockid_info::FREE;
+	if(! rs->amiprimary())
+		return lock_protocol::IOERR;
 
-	assert( pthread_mutex_unlock (lock_info->mutex) == 0 );
+	status = FREE;
+
+	//assert( pthread_mutex_unlock (lock_info->mutex) == 0 );
 
 	// unblock threads blocked on the condition variable
-	assert( pthread_cond_signal(lock_info->wait) == 0 );
+	//assert( pthread_cond_signal(lock_info->wait) == 0 );
 	
 	return lock_protocol::OK;
 }

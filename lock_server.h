@@ -8,24 +8,29 @@
 #include <vector>
 #include <stdio.h>
 #include <unistd.h>
+#include "rsm.h"
 
 class lock_server {
 
 	protected:
 		int nacquire;
 		lock_protocol::lockid_t clientID;
-		pthread_mutex_t global_mutex;
+		enum lock_status { LOCKED, FREE } status;
 
-		struct lockid_info {
+		rsm *rs;
+
+		//pthread_mutex_t global_mutex;
+
+		/*struct lockid_info {
 			enum lock_status { LOCKED, FREE } status;
 			pthread_mutex_t *mutex;
 			pthread_cond_t *wait;
 		};
 
-		std::map<lock_protocol::lockid_t, lock_server::lockid_info*> locks;
+		std::map<lock_protocol::lockid_t, lock_server::lockid_info*> locks;*/
 
 	public:
-		lock_server();
+		lock_server(rsm *rsm);
 		~lock_server() {};
 		
 		lock_protocol::status acquire(int clt, lock_protocol::lockid_t lid, int &);
