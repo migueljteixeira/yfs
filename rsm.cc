@@ -146,8 +146,8 @@ rsm::reg1(int proc, handler *h)
 void
 rsm::recovery()
 {
-	// temporary !
-	//inviewchange = true;
+	// TODO: temporary !
+	inviewchange = true;
 
 	bool r = false;
 
@@ -317,7 +317,7 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 		std::vector<std::string> current_view = cfg->get_curview();
 
 		// send invoke RPCs to nodes
-		for (unsigned i = 0; i < current_view.size(); i++) {
+		for (unsigned int i = 0; i < current_view.size(); i++) {
 
 			printf(" EXECUTING:: ! %d\n", i);
 
@@ -331,19 +331,21 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 			// something went wrong
 			if(!cl) {
 				printf("rsm::client_invoke: rejected\n");
-				//continue;
-				return rsm_client_protocol::BUSY;
+				// invoke paxos to remove this replica
+				// TODO: to invoke paxos we just wait for the heartbeat?
+				continue;
 			}
 
-			int ret = cl->call(rsm_protocol::invoke, procno, last_myvs,
+			int ret = cl->call(rsm_protocol::invoke, procno, myvs,
 						req, rpcc::to(1000));
 
 			printf("DONE! !!!!!!!!!!!! %d\n", ret);
 
 			if(ret != rsm_protocol::OK) {
 				printf("rsm::client_invoke: failed\n");
-				//continue;
-				return rsm_client_protocol::BUSY;
+				// invoke paxos to remove this replica
+				// TODO: to invoke paxos we just wait for the heartbeat?
+				continue;
 			}
 
 		}
@@ -375,18 +377,28 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 		// ensure the request has the expected sequence number 
 		// and i am under the current stable view
 		// before executing it
-		if(! (myvs.seqno == vs.seqno && myvs.vid == vs.vid))
+		if(! (myvs.seqno+1 == vs.seqno && myvs.vid == vs.vid))
 			ret = rsm_protocol::ERR;
 
+		// I must be a slave in the current view
+		if(amiprimary())
+			ret = rsm_protocol::ERR;
+			
 		// if i have not finished state synchronization,
 		// i should not process any RSM requests
 		if(! inviewchange)
 			ret = rsm_protocol::ERR;
 
-		last_myvs = myvs;
-		myvs.seqno++; // assign the next viewstamp in sequence
+		// only increase seqno if the invoke was successful
+		if(ret == rsm_protocol::OK) {
+			last_myvs = myvs;
+			myvs.seqno++; // assign the next viewstamp in sequence
+		}
 
 	pthread_mutex_unlock(&rsm_mutex);
+	
+	// execute the RSM request
+	execute(proc, req);
 
 	return ret;
 }

@@ -16,6 +16,10 @@ lock_server::lock_server(rsm *rsm)
 }
 
 lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, int &r) {
+	// if im not primary, cant talk with clients
+	if(! rs->amiprimary())
+		return lock_protocol::RPCERR;
+
 	lock_protocol::status ret = lock_protocol::OK;
 	r = nacquire;
 	
@@ -57,6 +61,10 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 	assert( pthread_mutex_unlock (lockid_info_ptr->mutex) == 0 );*/
 
 	/* NEW CODE */
+	
+	// if im not primary, cant talk with clients
+	if(! rs->amiprimary())
+		return lock_protocol::RPCERR;
 
 	// lockid does not exist, we have to create a new one
 	pthread_mutex_lock( &global_mutex );
@@ -97,6 +105,10 @@ lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid,
 	assert( pthread_cond_signal(lock_info->wait) == 0 );*/
 	
 	/* NEW CODE */
+	
+	// if im not primary, cant talk with clients
+	if(! rs->amiprimary())
+		return lock_protocol::RPCERR;
 	
 	lock_server::lockid_info *lock_info = locks.find(lid)->second;
 	lock_info->status = lockid_info::FREE;
