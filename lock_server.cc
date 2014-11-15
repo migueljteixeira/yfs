@@ -15,7 +15,7 @@ lock_server::lock_server(rsm *rsm)
 	rs = rsm;
 }
 
-lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, int &r) {
+lock_protocol::status lock_server::stat(lock_protocol::lockid_t lid, int &r) {
 	// if im not primary, cant talk with clients
 	if(! rs->amiprimary())
 		return lock_protocol::RPCERR;
@@ -26,7 +26,7 @@ lock_protocol::status lock_server::stat(int clt, lock_protocol::lockid_t lid, in
 	return ret;
 }
 
-lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r) {
+lock_protocol::status lock_server::acquire(lock_protocol::lockid_t lid, int &r) {
 
 	/*// lockid does not exist, we have to create a new one
 	pthread_mutex_lock( &global_mutex );
@@ -62,6 +62,8 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 
 	/* NEW CODE */
 	
+	printf("------ lock do: %d\n", lid);
+	
 	// if im not primary, cant talk with clients
 	if(! rs->amiprimary())
 		return lock_protocol::RPCERR;
@@ -73,28 +75,35 @@ lock_protocol::status lock_server::acquire(int clt, lock_protocol::lockid_t lid,
 		lock_server::lockid_info *new_lockid = (lock_server::lockid_info *)malloc(sizeof(*new_lockid));
 		new_lockid->status = lockid_info::FREE;
 
+		pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
+		pthread_mutex_init(mutex, NULL);
+		new_lockid->mutex = mutex;
+
 		// insert entry into map
 		locks.insert( std::pair<lock_protocol::lockid_t, lock_server::lockid_info *>(lid, new_lockid) );
-		
-		// we can return now
-		pthread_mutex_unlock( &global_mutex );
-		return lock_protocol::OK;
 	}
-
-	lock_server::lockid_info *lockid_info_ptr = locks.find(lid)->second;
 	pthread_mutex_unlock( &global_mutex );
 
+	lock_server::lockid_info *lockid_info_ptr = locks.find(lid)->second;
+	pthread_mutex_lock (lockid_info_ptr->mutex);
+
 	// if its locked we tell the client to try again
-	if(lockid_info_ptr->status == lockid_info::LOCKED)
+	if(lockid_info_ptr->status == lockid_info::LOCKED) {
+		printf("------ lock do: %d retry\n", lid);
+		pthread_mutex_unlock (lockid_info_ptr->mutex);
 		return lock_protocol::RETRY;
+	}
+	
+	printf("------ lock do: %d ok\n", lid);
 	
 	// otherwise lock it
 	lockid_info_ptr->status = lockid_info::LOCKED;
+	pthread_mutex_unlock (lockid_info_ptr->mutex);
 
 	return lock_protocol::OK;
 }
 
-lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid, int &r) {
+lock_protocol::status lock_server::release(lock_protocol::lockid_t lid, int &r) {
 	/*lock_server::lockid_info *lock_info = locks.find(lid)->second;
 
 	assert( pthread_mutex_lock (lock_info->mutex) == 0 );
@@ -106,12 +115,19 @@ lock_protocol::status lock_server::release(int clt, lock_protocol::lockid_t lid,
 	
 	/* NEW CODE */
 	
+	printf("------ unlock do: %d\n", lid);
+	
 	// if im not primary, cant talk with clients
-	if(! rs->amiprimary())
+	if(!rs->amiprimary())
 		return lock_protocol::RPCERR;
 	
 	lock_server::lockid_info *lock_info = locks.find(lid)->second;
+	
+	pthread_mutex_lock (lock_info->mutex);
 	lock_info->status = lockid_info::FREE;
+	pthread_mutex_unlock (lock_info->mutex);
+	
+	printf("------ unlock do: %d terminou\n", lid);
 	
 	return lock_protocol::OK;
 }
