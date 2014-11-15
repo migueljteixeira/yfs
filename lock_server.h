@@ -9,7 +9,24 @@
 #include <unistd.h>
 #include "rsm.h"
 
-class lock_server {
+struct lockid_info {
+	enum lock_status { LOCKED, FREE } status;
+	pthread_mutex_t *mutex;
+	//pthread_cond_t *wait;
+};
+
+class lock_server : public rsm_state_transfer {
+
+	public:
+		lock_server(rsm *rsm);
+		~lock_server() {};
+		
+		lock_protocol::status acquire(lock_protocol::lockid_t lid, int &);
+		lock_protocol::status release(lock_protocol::lockid_t lid, int &);
+		lock_protocol::status stat(lock_protocol::lockid_t lid, int &);
+		
+		virtual std::string marshal_state();
+		virtual void unmarshal_state(std::string);
 
 	protected:
 		int nacquire;
@@ -19,21 +36,7 @@ class lock_server {
 
 		pthread_mutex_t global_mutex;
 
-		struct lockid_info {
-			enum lock_status { LOCKED, FREE } status;
-			pthread_mutex_t *mutex;
-			//pthread_cond_t *wait;
-		};
-
-		std::map<lock_protocol::lockid_t, lock_server::lockid_info*> locks;
-
-	public:
-		lock_server(rsm *rsm);
-		~lock_server() {};
-		
-		lock_protocol::status acquire(lock_protocol::lockid_t lid, int &);
-		lock_protocol::status release(lock_protocol::lockid_t lid, int &);
-		lock_protocol::status stat(lock_protocol::lockid_t lid, int &);
+		std::map<lock_protocol::lockid_t, lockid_info*> locks;
 };
 
 #endif

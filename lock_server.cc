@@ -13,6 +13,7 @@ lock_server::lock_server(rsm *rsm)
 {
 	pthread_mutex_init(&global_mutex, NULL);
 	rs = rsm;
+	rs->set_state_transfer(this);
 }
 
 lock_protocol::status lock_server::stat(lock_protocol::lockid_t lid, int &r) {
@@ -37,7 +38,7 @@ lock_protocol::status lock_server::acquire(lock_protocol::lockid_t lid, int &r) 
 	pthread_mutex_lock( &global_mutex );
 	if( locks.find(lid) == locks.end() ) {
 		// create new lockid entry
-		lock_server::lockid_info *new_lockid = (lock_server::lockid_info *)malloc(sizeof(*new_lockid));
+		lockid_info *new_lockid = (lockid_info *)malloc(sizeof(*new_lockid));
 		new_lockid->status = lockid_info::FREE;
 
 		pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
@@ -45,11 +46,11 @@ lock_protocol::status lock_server::acquire(lock_protocol::lockid_t lid, int &r) 
 		new_lockid->mutex = mutex;
 
 		// insert entry into map
-		locks.insert( std::pair<lock_protocol::lockid_t, lock_server::lockid_info *>(lid, new_lockid) );
+		locks.insert( std::pair<lock_protocol::lockid_t, lockid_info *>(lid, new_lockid) );
 	}
 	pthread_mutex_unlock( &global_mutex );
 
-	lock_server::lockid_info *lockid_info_ptr = locks.find(lid)->second;
+	lockid_info *lockid_info_ptr = locks.find(lid)->second;
 	pthread_mutex_lock (lockid_info_ptr->mutex);
 
 	// if its locked we tell the client to try again
@@ -70,7 +71,7 @@ lock_protocol::status lock_server::release(lock_protocol::lockid_t lid, int &r) 
 	if(!rs->amiprimary())
 		return lock_protocol::RPCERR;
 	
-	lock_server::lockid_info *lock_info = locks.find(lid)->second;
+	lockid_info *lock_info = locks.find(lid)->second;
 	
 	pthread_mutex_lock (lock_info->mutex);
 	lock_info->status = lockid_info::FREE;
@@ -79,3 +80,66 @@ lock_protocol::status lock_server::release(lock_protocol::lockid_t lid, int &r) 
 	return lock_protocol::OK;
 }
 
+marshall &
+operator<<(marshall &m, lockid_info::lock_status &status) {
+	m << status;
+	return m;
+}
+
+unmarshall &
+operator>>(unmarshall &u, lockid_info::lock_status &status) {
+	u >> status;
+	return u;
+}
+
+std::string 
+lock_server::marshal_state() {
+
+  // lock any needed mutexes
+  pthread_mutex_lock( &global_mutex );
+  
+  marshall rep;
+  rep << locks.size();
+  std::map<lock_protocol::lockid_t, lockid_info*>::iterator iter_lock;
+  for (iter_lock = locks.begin(); iter_lock != locks.end(); iter_lock++) {
+    lock_protocol::lockid_t lid = iter_lock->first;
+    lockid_info* lid_info = locks[lid];
+    rep << lid;
+    rep << lid_info->status;
+  }
+  
+  // unlock any mutexes
+  pthread_mutex_unlock( &global_mutex );
+  
+  return rep.str();
+
+}
+
+void 
+lock_server::unmarshal_state(std::string state) {
+
+  // lock any needed mutexes
+  pthread_mutex_lock( &global_mutex );
+  
+  unmarshall rep(state);
+  unsigned int locks_size;
+  rep >> locks_size;
+  for (unsigned int i = 0; i < locks_size; i++) {
+    lock_protocol::lockid_t lid;
+    rep >> lid;
+    
+    // create new lockid entry
+	lockid_info *new_lockid = (lockid_info *)malloc(sizeof(*new_lockid));
+	rep >> new_lockid->status;
+
+	pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
+	pthread_mutex_init(mutex, NULL);
+	new_lockid->mutex = mutex;
+
+	// insert entry into map
+	locks.insert( std::pair<lock_protocol::lockid_t, lockid_info *>(lid, new_lockid) );
+  }
+  
+  // unlock any mutexes
+  pthread_mutex_unlock( &global_mutex );
+}
