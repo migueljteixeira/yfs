@@ -31,7 +31,54 @@ rsm_client::rsm_client(std::string dst)
 void
 rsm_client::primary_failure()
 {
-	// for lab 6
+	// try all replicas until we find one that works
+	for(int i = 0; i < known_mems.size(); i++) {
+	
+		// try a connection to this replica
+		sockaddr_in dstsock;
+		make_sockaddr(known_mems[i].c_str(), &dstsock);
+		rpcc con(dstsock);
+		
+		int ret = con.bind(rpcc::to(1000));
+		//this one didnt work
+		if (ret < 0)
+			continue;
+			
+		// get this replica known members
+		std::vector<std::string> new_mems;
+		int ret = con.call(rsm_client_protocol::members, 0, new_mems, rpcc::to(1000));
+		
+		// this replica didnt work
+		if(ret != rsm_protocol::OK)
+			continue;
+			
+		// the replica suggested this primary
+		std::string new_p = new_mems.back();
+		new_mems.pop_back();
+		
+		// make sure the primary the replica suggested
+		// is not the one we tried before
+		if(primary == new_p)
+			continue;
+			
+		// lets contact the new primary
+		make_sockaddr(new_p.c_str(), &dstsock);
+		
+		primary_t new_primary;
+		new_primary.cl = new rpcc(dstsock);
+		new_primary.id = new_p;
+		
+		// make the connection
+		int ret = new_primary.cl->bind(rpcc::to(1000));
+		// it failed
+		if (ret < 0)
+			continue;
+			
+		// it worked
+		primary = new_primary;
+		
+		break;
+	}
 }
 
 rsm_protocol::status
