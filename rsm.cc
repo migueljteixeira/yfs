@@ -292,8 +292,6 @@ rsm::execute(int procno, std::string req)
 rsm_client_protocol::status
 rsm::client_invoke(int procno, std::string req, std::string &r)
 {
-	printf(" RSM:CLIENT_INVOKE:: !?!\n");
-	
 	int dummy;
 
 	// If this RSM replica is undergoing Paxos view changes,
@@ -318,9 +316,6 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 
 		// send invoke RPCs to nodes
 		for (unsigned int i = 0; i < current_view.size(); i++) {
-
-			printf(" EXECUTING:: ! %d\n", i);
-
 			// if this node is me, continue
 			if(current_view[i] == cfg->myaddr()) continue;
 
@@ -346,8 +341,6 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 						req, dummy, rpcc::to(1000));
 			}
 
-			printf("DONE! !!!!!!!!!!!! %d\n", ret);
-
 			if(ret != rsm_protocol::OK) {
 				printf("rsm::client_invoke: failed\n");
 				// invoke paxos to remove this replica
@@ -358,8 +351,7 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 		}
 
 	// execute the RSM request
-	printf("------execute: %s\n", req.c_str());
-	execute(procno, req);
+	r = execute(procno, req);
 	pthread_mutex_unlock(&invoke_mutex);
 
 	return rsm_client_protocol::OK;
@@ -379,22 +371,16 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 
 	pthread_mutex_lock(&rsm_mutex);
 	
-		printf("----veio: %d, tinha: %d\n", vs.seqno, myvs.seqno);
-	
 		// if i have not finished state synchronization,
 		// i should not process any RSM requests
-		if(inviewchange) {
-			printf("----foi aqui0?\n");
+		if(inviewchange)
 			return rsm_protocol::BUSY;
-		}
 
 		// ensure the request has the expected sequence number 
 		// and i am under the current stable view
 		// before executing it
-		if(! (myvs.seqno+1 == vs.seqno && myvs.vid == vs.vid)) {
-			printf("----foi aqui1?\n");
+		if(! (myvs.seqno+1 == vs.seqno && myvs.vid == vs.vid))
 			return rsm_protocol::ERR;
-		}
 
 		last_myvs = myvs;
 		myvs.seqno++; // assign the next viewstamp in sequence
@@ -402,7 +388,6 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 	pthread_mutex_unlock(&rsm_mutex);
 	
 	// execute the RSM request
-	printf("------execute: %s\n", req.c_str());
 	execute(proc, req);
 
 	return rsm_protocol::OK;
