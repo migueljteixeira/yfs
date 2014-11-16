@@ -152,7 +152,11 @@ rsm::recovery()
 
 	while (1) {
 
+		printf("recovery: inviewchange\n");
+
 		while (!cfg->ismember(cfg->myaddr())) {
+
+			printf("recovery: inviewchange???\n");
 
 			// recovery has started, set inviewchange to true
 			// to stop any RSM requests processing
@@ -166,6 +170,8 @@ rsm::recovery()
 				assert(pthread_mutex_lock(&rsm_mutex)==0);
 			}
 		}
+
+		printf("recovery: inviewchange finish\n");
 
 		// recovery has finished, set inviewchange to false
 		// to allow the processing of RSM requests

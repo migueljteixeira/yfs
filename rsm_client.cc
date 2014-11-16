@@ -7,6 +7,7 @@
 rsm_client::rsm_client(std::string dst)
 {
 	printf("create rsm_client\n");
+
 	std::vector<std::string> mems;
 
 	pthread_mutex_init(&rsm_client_mutex, NULL);
@@ -21,6 +22,9 @@ rsm_client::rsm_client(std::string dst)
 		primary.id.c_str());
 		exit(1);
 	}
+
+	id = primary.cl->id();
+
 	assert(pthread_mutex_lock(&rsm_client_mutex)==0);
 	assert (init_members(true));
 	assert(pthread_mutex_unlock(&rsm_client_mutex)==0);

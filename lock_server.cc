@@ -16,7 +16,7 @@ lock_server::lock_server(rsm *rsm)
 	rs->set_state_transfer(this);
 }
 
-lock_protocol::status lock_server::stat(lock_protocol::lockid_t lid, int &r) {
+lock_protocol::status lock_server::stat(unsigned int id, lock_protocol::lockid_t lid, int &r) {
 	// if im not primary, cant talk with clients
 	if(! rs->amiprimary())
 		return lock_protocol::RPCERR;
@@ -27,55 +27,88 @@ lock_protocol::status lock_server::stat(lock_protocol::lockid_t lid, int &r) {
 	return ret;
 }
 
-lock_protocol::status lock_server::acquire(lock_protocol::lockid_t lid, int &r) {
+lock_protocol::status lock_server::acquire(unsigned int id, lock_protocol::lockid_t lid, int &r) {
 	// if im not primary, cant talk with clients
 	if(! rs->amiprimary()) {
 		r = lock_protocol::RPCERR;
 		return lock_protocol::RPCERR;
 	}
 
+	printf("------ lock do: %llu -- %d \n", lid, id);
+
 	// lockid does not exist, we have to create a new one
 	pthread_mutex_lock( &global_mutex );
-	if( locks.find(lid) == locks.end() ) {
-		// create new lockid entry
-		lockid_info *new_lockid = (lockid_info *)malloc(sizeof(*new_lockid));
-		new_lockid->status = lockid_info::FREE;
 
-		pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
-		pthread_mutex_init(mutex, NULL);
-		new_lockid->mutex = mutex;
+		if( locks.find(lid) == locks.end() ) {
+			// create new lockid entry
+			lockid_info *new_lockid = new lockid_info;
+			new_lockid->id = 0;
+			new_lockid->status = lockid_info::FREE;
 
-		// insert entry into map
-		locks.insert( std::pair<lock_protocol::lockid_t, lockid_info *>(lid, new_lockid) );
-	}
+			pthread_mutex_t *mutex = new pthread_mutex_t;
+			pthread_mutex_init(mutex, NULL);
+			new_lockid->mutex = mutex;
+
+			// insert entry into map
+			locks.insert( std::pair<lock_protocol::lockid_t, lockid_info *>(lid, new_lockid) );
+		}
+
 	pthread_mutex_unlock( &global_mutex );
 
 	lockid_info *lockid_info_ptr = locks.find(lid)->second;
 	pthread_mutex_lock (lockid_info_ptr->mutex);
 
-	// if its locked we tell the client to try again
-	if(lockid_info_ptr->status == lockid_info::LOCKED) {
-		pthread_mutex_unlock (lockid_info_ptr->mutex);
-		return lock_protocol::RETRY;
-	}
+		// if its already locked be this client, return OK
+		if(lockid_info_ptr->id == id) {
+			printf("------ lock do: %llu equal -- %d \n", lid, id);
+
+			pthread_mutex_unlock (lockid_info_ptr->mutex);
+			return lock_protocol::OK;
+		}
+
+		// if its locked we tell the client to try again
+		if(lockid_info_ptr->status == lockid_info::LOCKED) {
+			printf("------ lock do: %llu retry -- %d \n", lid, id);
+
+			pthread_mutex_unlock (lockid_info_ptr->mutex);
+			return lock_protocol::RETRY;
+		}
+
+		printf("------ lock do: %llu ok -- %d \n", lid, id);
 	
-	// otherwise lock it
-	lockid_info_ptr->status = lockid_info::LOCKED;
+		// otherwise lock it
+		lockid_info_ptr->id = id;
+		lockid_info_ptr->status = lockid_info::LOCKED;
+
 	pthread_mutex_unlock (lockid_info_ptr->mutex);
 
 	return lock_protocol::OK;
 }
 
-lock_protocol::status lock_server::release(lock_protocol::lockid_t lid, int &r) {
+lock_protocol::status lock_server::release(unsigned int id, lock_protocol::lockid_t lid, int &r) {
 	// if im not primary, cant talk with clients
 	if(!rs->amiprimary())
 		return lock_protocol::RPCERR;
+
+	printf("------ unlock do: %llu -- %d \n", lid, id);
 	
 	lockid_info *lock_info = locks.find(lid)->second;
-	
 	pthread_mutex_lock (lock_info->mutex);
-	lock_info->status = lockid_info::FREE;
+
+		// if its already locked by another client, tell it to try again
+		if(lock_info->id != id) {
+			printf("------ unlock do: %llu equal -- %d \n", lid, id);
+
+			pthread_mutex_unlock (lock_info->mutex);
+			return lock_protocol::RETRY;
+		}
+
+		lock_info->id = 0;
+		lock_info->status = lockid_info::FREE;
+
 	pthread_mutex_unlock (lock_info->mutex);
+
+	printf("------ unlock do: %llu terminou -- %d \n", lid, id);
 	
 	return lock_protocol::OK;
 }
@@ -106,6 +139,7 @@ lock_server::marshal_state() {
     lockid_info* lid_info = locks[lid];
     rep << lid;
     rep << lid_info->status;
+    rep << lid_info->id;
   }
   
   // unlock any mutexes
@@ -129,10 +163,11 @@ lock_server::unmarshal_state(std::string state) {
     rep >> lid;
     
     // create new lockid entry
-	lockid_info *new_lockid = (lockid_info *)malloc(sizeof(*new_lockid));
+	lockid_info *new_lockid = new lockid_info;
 	rep >> new_lockid->status;
+	rep >> new_lockid->id;
 
-	pthread_mutex_t *mutex = (pthread_mutex_t *)malloc(sizeof(*mutex));
+	pthread_mutex_t *mutex = new pthread_mutex_t;
 	pthread_mutex_init(mutex, NULL);
 	new_lockid->mutex = mutex;
 

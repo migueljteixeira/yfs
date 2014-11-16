@@ -12,13 +12,13 @@ lock_client::lock_client(std::string dst)
 {
 	sockaddr_in dstsock;
 	make_sockaddr(dst.c_str(), &dstsock);
-	
+
 	cl = new rsm_client(dst.c_str());
 }
 
 int lock_client::stat(lock_protocol::lockid_t lid) {
 	int r;
-	int ret = cl->call(lock_protocol::stat, lid, r);
+	int ret = cl->call(lock_protocol::stat, cl->id, lid, r);
 
 	assert (ret == lock_protocol::OK);
 	
@@ -27,13 +27,13 @@ int lock_client::stat(lock_protocol::lockid_t lid) {
 
 lock_protocol::status lock_client::acquire(lock_protocol::lockid_t lid) {
 	int r;
-	int ret = cl->call(lock_protocol::acquire, lid, r);
+	int ret = cl->call(lock_protocol::acquire, cl->id, lid, r);
 	
 	while(ret == lock_protocol::RETRY) {
 		printf("lock_client::acquire: busy\n");
 		
 		usleep(50 * 1000); // 50 ms
-		ret = cl->call(lock_protocol::acquire, lid, r);
+		ret = cl->call(lock_protocol::acquire, cl->id, lid, r);
 	}
 
 	return ret;
@@ -41,7 +41,7 @@ lock_protocol::status lock_client::acquire(lock_protocol::lockid_t lid) {
 
 lock_protocol::status lock_client::release(lock_protocol::lockid_t lid) {
 	int r;
-	int ret = cl->call(lock_protocol::release, lid, r);
+	int ret = cl->call(lock_protocol::release, cl->id, lid, r);
 	
 	return ret;
 }

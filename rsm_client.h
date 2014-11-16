@@ -33,6 +33,8 @@ class rsm_client {
 		rsm_client(std::string dst);
 		rsm_protocol::status invoke(int proc, std::string req, std::string &rep);
 
+		unsigned int id;
+
 		template<class R, class A1>
 		int call(unsigned int proc, const A1 & a1, R &r);
 
