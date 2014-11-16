@@ -146,15 +146,18 @@ rsm::reg1(int proc, handler *h)
 void
 rsm::recovery()
 {
-	// TODO: temporary !
-	inviewchange = false;
-
 	bool r = false;
 
 	assert(pthread_mutex_lock(&rsm_mutex)==0);
 
 	while (1) {
+
 		while (!cfg->ismember(cfg->myaddr())) {
+
+			// recovery has started, set inviewchange to true
+			// to stop any RSM requests processing
+			inviewchange = true;
+
 			if (join(primary)) {
 				printf("recovery: joined\n");
 			} else {
@@ -163,6 +166,10 @@ rsm::recovery()
 				assert(pthread_mutex_lock(&rsm_mutex)==0);
 			}
 		}
+
+		// recovery has finished, set inviewchange to false
+		// to allow the processing of RSM requests
+		inviewchange = false;
 
 		if (r) inviewchange = false;
 		printf("recovery: go to sleep %d %d\n", insync, inviewchange);
@@ -264,6 +271,9 @@ rsm::commit_change()
 
 	// since its a view change, we have to run the recovery thread
 	pthread_cond_signal(&recovery_cond);
+
+	if(cfg->ismember(cfg->myaddr()))
+		breakpoint2();
 }
 
 
@@ -348,10 +358,14 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 				continue;
 			}
 
+			breakpoint1();
+
+			partition1();
 		}
 
-	// execute the RSM request
-	r = execute(procno, req);
+		// execute the RSM request
+		r = execute(procno, req);
+
 	pthread_mutex_unlock(&invoke_mutex);
 
 	return rsm_client_protocol::OK;
@@ -389,6 +403,8 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 	
 	// execute the RSM request
 	execute(proc, req);
+
+	breakpoint1();
 
 	return rsm_protocol::OK;
 }

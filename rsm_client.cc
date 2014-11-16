@@ -32,8 +32,8 @@ void
 rsm_client::primary_failure()
 {
 	// try all replicas until we find one that works
-	for(int i = 0; i < known_mems.size(); i++) {
-	
+	for(unsigned int i = 0; i < known_mems.size(); i++) {
+
 		// try a connection to this replica
 		sockaddr_in dstsock;
 		make_sockaddr(known_mems[i].c_str(), &dstsock);
@@ -45,20 +45,20 @@ rsm_client::primary_failure()
 			continue;
 			
 		// get this replica known members
-		std::vector<std::string> new_mems;
-		int ret = con.call(rsm_client_protocol::members, 0, new_mems, rpcc::to(1000));
+		std::vector<std::string> new_members;
+		ret = con.call(rsm_client_protocol::members, 0, new_members, rpcc::to(1000));
 		
 		// this replica didnt work
 		if(ret != rsm_protocol::OK)
 			continue;
 			
 		// the replica suggested this primary
-		std::string new_p = new_mems.back();
-		new_mems.pop_back();
+		std::string new_p = new_members.back();
+		new_members.pop_back();
 		
 		// make sure the primary the replica suggested
 		// is not the one we tried before
-		if(primary == new_p)
+		if(primary.id == new_p)
 			continue;
 			
 		// lets contact the new primary
@@ -69,8 +69,8 @@ rsm_client::primary_failure()
 		new_primary.id = new_p;
 		
 		// make the connection
-		int ret = new_primary.cl->bind(rpcc::to(1000));
-		// it failed
+		ret = new_primary.cl->bind(rpcc::to(1000));	
+		// connection failed
 		if (ret < 0)
 			continue;
 			
@@ -85,15 +85,13 @@ rsm_protocol::status
 rsm_client::invoke(int proc, std::string req, std::string &rep)
 {
 	int ret;
-	rpcc *cl;
 	assert(pthread_mutex_lock(&rsm_client_mutex)==0);
 	while (1) {
 		printf("rsm_client::invoke proc %x primary %s\n", proc, primary.id.c_str());
-		cl = primary.cl;
 		primary.nref++;
 		assert(pthread_mutex_unlock(&rsm_client_mutex)==0);
 		ret = primary.cl->call(rsm_client_protocol::invoke, proc, req, 
-		rep, rpcc::to(5000));
+			rep, rpcc::to(5000));
 		assert(pthread_mutex_lock(&rsm_client_mutex)==0);
 		primary.nref--;
 		printf("rsm_client::invoke proc %x primary %s ret %d\n", proc, 
