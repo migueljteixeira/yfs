@@ -12,7 +12,6 @@
 struct lockid_info {
 	enum lock_status { LOCKED, FREE } status;
 	pthread_mutex_t *mutex;
-	//pthread_cond_t *wait;
 	unsigned int id;
 };
 
@@ -31,12 +30,9 @@ class lock_server : public rsm_state_transfer {
 
 	protected:
 		int nacquire;
-		lock_protocol::lockid_t clientID;
-
+		
 		rsm *rs;
-
 		pthread_mutex_t global_mutex;
-
 		std::map<lock_protocol::lockid_t, lockid_info*> locks;
 };
 
