@@ -215,7 +215,7 @@ rsm::statetransfer(std::string m)
 	if (h.get_rpcc()) {
 		assert(pthread_mutex_unlock(&rsm_mutex)==0);
 		ret = h.get_rpcc()->call(rsm_protocol::transferreq, cfg->myaddr(), 
-		last_myvs, r, rpcc::to(1000));
+			last_myvs, r, rpcc::to(1000));
 		assert(pthread_mutex_lock(&rsm_mutex)==0);
 	}
 	if (h.get_rpcc() == 0 || ret != rsm_protocol::OK) {
@@ -277,9 +277,6 @@ rsm::commit_change()
 
 	// since its a view change, we have to run the recovery thread
 	pthread_cond_signal(&recovery_cond);
-
-	if(cfg->ismember(cfg->myaddr()))
-		breakpoint2();
 }
 
 
@@ -364,9 +361,6 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 				continue;
 			}
 
-			breakpoint1();
-
-			partition1();
 		}
 
 		// execute the RSM request
@@ -404,13 +398,11 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 
 		last_myvs = myvs;
 		myvs.seqno++; // assign the next viewstamp in sequence
-		
-	pthread_mutex_unlock(&rsm_mutex);
 	
+	pthread_mutex_unlock(&rsm_mutex);
+
 	// execute the RSM request
 	execute(proc, req);
-
-	breakpoint1();
 
 	return rsm_protocol::OK;
 }

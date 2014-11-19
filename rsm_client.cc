@@ -16,6 +16,7 @@ rsm_client::rsm_client(std::string dst)
 	primary.id = dst;
 	primary.cl = new rpcc(dstsock);
 	primary.nref = 0;
+
 	int ret = primary.cl->bind(rpcc::to(1000));
 	if (ret < 0) {
 		printf("rsm_client::rsm_client bind failure %d failure w %s; exit\n", ret, 
@@ -23,7 +24,7 @@ rsm_client::rsm_client(std::string dst)
 		exit(1);
 	}
 
-	id = primary.cl->id();
+	id = rand();
 
 	assert(pthread_mutex_lock(&rsm_client_mutex)==0);
 	assert (init_members(true));
