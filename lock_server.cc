@@ -34,8 +34,6 @@ lock_protocol::status lock_server::acquire(unsigned int id, lock_protocol::locki
 		return lock_protocol::RPCERR;
 	}
 
-	printf("------ lock do: %llu -- %d \n", lid, id);
-
 	// lockid does not exist, we have to create a new one
 	pthread_mutex_lock( &global_mutex );
 
@@ -60,21 +58,15 @@ lock_protocol::status lock_server::acquire(unsigned int id, lock_protocol::locki
 
 		// if its already locked be this client, return OK
 		if(lockid_info_ptr->id == id) {
-			printf("------ lock do: %llu equal -- %d \n", lid, id);
-
 			pthread_mutex_unlock (lockid_info_ptr->mutex);
 			return lock_protocol::OK;
 		}
 
 		// if its locked we tell the client to try again
 		if(lockid_info_ptr->status == lockid_info::LOCKED) {
-			printf("------ lock do: %llu retry -- %d \n", lid, id);
-
 			pthread_mutex_unlock (lockid_info_ptr->mutex);
 			return lock_protocol::RETRY;
 		}
-
-		printf("------ lock do: %llu ok -- %d \n", lid, id);
 	
 		// otherwise lock it
 		lockid_info_ptr->id = id;
@@ -89,16 +81,12 @@ lock_protocol::status lock_server::release(unsigned int id, lock_protocol::locki
 	// if im not primary, cant talk with clients
 	if(!rs->amiprimary())
 		return lock_protocol::RPCERR;
-
-	printf("------ unlock do: %llu -- %d \n", lid, id);
 	
 	lockid_info *lock_info = locks.find(lid)->second;
 	pthread_mutex_lock (lock_info->mutex);
 
 		// if its already locked by another client, tell it to try again
 		if(lock_info->id != id) {
-			printf("------ unlock do: %llu equal -- %d \n", lid, id);
-
 			pthread_mutex_unlock (lock_info->mutex);
 			return lock_protocol::RETRY;
 		}
@@ -107,8 +95,6 @@ lock_protocol::status lock_server::release(unsigned int id, lock_protocol::locki
 		lock_info->status = lockid_info::FREE;
 
 	pthread_mutex_unlock (lock_info->mutex);
-
-	printf("------ unlock do: %llu terminou -- %d \n", lid, id);
 	
 	return lock_protocol::OK;
 }

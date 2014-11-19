@@ -146,22 +146,14 @@ rsm::reg1(int proc, handler *h)
 void
 rsm::recovery()
 {
+	inviewchange = false;
 	bool r = false;
 
 	assert(pthread_mutex_lock(&rsm_mutex)==0);
 
 	while (1) {
 
-		printf("recovery: inviewchange\n");
-
 		while (!cfg->ismember(cfg->myaddr())) {
-
-			printf("recovery: inviewchange???\n");
-
-			// recovery has started, set inviewchange to true
-			// to stop any RSM requests processing
-			inviewchange = true;
-
 			if (join(primary)) {
 				printf("recovery: joined\n");
 			} else {
@@ -170,12 +162,6 @@ rsm::recovery()
 				assert(pthread_mutex_lock(&rsm_mutex)==0);
 			}
 		}
-
-		printf("recovery: inviewchange finish\n");
-
-		// recovery has finished, set inviewchange to false
-		// to allow the processing of RSM requests
-		inviewchange = false;
 
 		if (r) inviewchange = false;
 		printf("recovery: go to sleep %d %d\n", insync, inviewchange);
@@ -339,8 +325,7 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 			// something went wrong
 			if(!cl) {
 				printf("rsm::client_invoke: rejected\n");
-				// invoke paxos to remove this replica
-				// TODO: to invoke paxos we just wait for the heartbeat?
+				// wait for the heartbeat to remove this replica
 				continue;
 			}
 
@@ -356,8 +341,7 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 
 			if(ret != rsm_protocol::OK) {
 				printf("rsm::client_invoke: failed\n");
-				// invoke paxos to remove this replica
-				// TODO: to invoke paxos we just wait for the heartbeat?
+				// wait for the heartbeat to remove this replica
 				continue;
 			}
 
@@ -381,8 +365,6 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 rsm_protocol::status
 rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 {
-	printf("rsm::invoke: IN!\n");
-
 	pthread_mutex_lock(&rsm_mutex);
 	
 		// if i have not finished state synchronization,
