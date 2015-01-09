@@ -5,7 +5,7 @@ Distributed Systems and Algorithms project
 
 In this sequence of labs, you'll build a multi-server file system called Yet-Another File System (yfs) in the spirit of Frangipani. At the end of all the labs, your file server architecture will look like this:
 
-![overview](https://drive.google.com/file/d/0B1tnx50O2XkNV0NnQ0N0bmRLSEE/preview)
+![overview](https://drive.google.com/uc?id=0B1tnx50O2XkNV0NnQ0N0bmRLSEE)
 
 
 You'll write a file server process, labeled yfs above, using the FUSE toolkit. Each client host will run a copy of yfs. yfs will appear to local applications on the same machine by registering via FUSE to receive file system events from the operating system. The yfs extent server will store all the file system data on an extent server on the network, instead of on a local disk. yfs servers on multiple client hosts can share the file system by sharing a single extent server.
